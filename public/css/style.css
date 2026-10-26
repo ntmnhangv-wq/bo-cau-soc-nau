@@ -355,3 +355,69 @@ body.noscroll{overflow:hidden}
 
 /* v9: bỏ viền đỏ khi vùng nội dung được focus tự động */
 main:focus,main:focus-visible,#main:focus{outline:none}
+
+/* ===== v10: XP, bản đồ, quiz, xếp hạng, chia sẻ ===== */
+.lvl{display:flex;gap:12px;align-items:center;max-width:560px;margin:0 auto 14px;background:#fff3cf;border:3px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:10px 14px}
+.lvl .ic{font-size:2.2rem;line-height:1}
+.lvl .in{flex:1;min-width:0}
+.lvl .bar{height:12px;border:2.5px solid var(--line);border-radius:999px;background:#fff;overflow:hidden;margin:4px 0}
+.lvl .bar i{display:block;height:100%;background:var(--leaf);border-radius:999px;transition:width .5s}
+.lvl small{color:var(--ink-soft);font-weight:700}
+/* bản đồ */
+.mapwrap{max-width:560px;margin:0 auto 20px}
+.mapwrap svg{width:100%;height:auto;display:block;border-radius:22px;border:3px solid var(--line);box-shadow:var(--shadow);background:#fff}
+.mapwrap .land{fill:#eaf7e4;stroke:none}
+.mapwrap .river{fill:none;stroke:#a9dcf5;stroke-width:26;stroke-linecap:round}
+.mapwrap .rivlab{font:700 11px Nunito,sans-serif;fill:#3d89b0;letter-spacing:.5px}
+.mapwrap .seg{fill:none;stroke:#b9c6cf;stroke-width:6;stroke-dasharray:3 9;stroke-linecap:round}
+.mapwrap .seg.on{stroke:var(--leaf);stroke-dasharray:none}
+.mapwrap .dot{fill:#fff;stroke:var(--line);stroke-width:3}
+.mapwrap .halo{fill:none}
+.mapwrap .ico{font-size:20px}
+.mapwrap .lab{font:800 11.5px Nunito,sans-serif;fill:var(--ink);paint-order:stroke;stroke:#eaf7e4;stroke-width:3px}
+.mapwrap .done .dot{fill:var(--leaf-l);stroke:var(--leaf)}
+.mapwrap .tick{fill:var(--leaf);stroke:#fff;stroke-width:2}
+.mapwrap .tk{font:800 11px sans-serif;fill:#fff}
+.mapwrap .cur .dot{fill:var(--sun)}
+.mapwrap .here .halo{fill:rgba(247,183,49,.35);animation:pulse 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.mapwrap .lock{opacity:.6}.mapwrap .lock .dot{fill:#e3e8ec;stroke:#a9b8c8}
+.mapwrap a.mnode{cursor:pointer}
+.mapwrap a.mnode:hover .dot,.mapwrap a.mnode:focus-visible .dot{stroke-width:4.5}
+.mapwrap .avmap{filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.35);opacity:.3}}
+/* quiz */
+.qopts{display:grid;gap:12px;margin:14px 0}
+.qopts label{display:grid;gap:4px;font-weight:700}
+.qopts label small{font-weight:400;color:var(--ink-soft)}
+.qopts input[type=text],.qopts input:not([type]){font:inherit;padding:10px 12px;min-height:44px;border:3px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);width:100%}
+.qopts label.chk{display:flex;align-items:center;gap:10px;min-height:44px}
+.qopts label.chk input{width:24px;height:24px;accent-color:var(--leaf)}
+.timer{display:flex;align-items:center;gap:8px;margin:8px 0 2px;font-weight:800}
+.timer .tb{flex:1;height:12px;border:2.5px solid var(--line);border-radius:999px;background:#fff;overflow:hidden}
+.timer .tb i{display:block;height:100%;width:100%;background:var(--coral);border-radius:999px}
+.timer.stop .tb i{transition:none!important}
+.streak{color:var(--coral);font-weight:800}
+.gain{margin:0 0 4px;font-weight:800;color:var(--leaf)}
+.codecard .code{font:800 1.5rem var(--f-head);letter-spacing:3px;background:var(--sun);border:2.5px solid var(--line);border-radius:10px;padding:0 10px;margin-left:6px}
+/* xếp hạng */
+.rank{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.rank li{display:grid;grid-template-columns:44px 1fr auto auto;gap:8px;align-items:center;padding:8px 12px;border:2.5px solid var(--line);border-radius:14px;background:#fff;font-weight:700}
+.rank li.me{background:var(--sun)}
+.rank .rk{font:800 1.2rem var(--f-head);text-align:center}.rank .sc{font:800 1.1rem var(--f-head)}.rank .tm{color:var(--ink-soft);font-size:.9rem}
+.rank em{font-weight:400}
+/* chia sẻ */
+.sharebox{max-width:420px;margin:14px auto 0}
+.sharepic{width:100%;height:auto;border:3px solid var(--line);border-radius:16px;box-shadow:var(--shadow);margin-bottom:10px;-webkit-touch-callout:default}
+:root[data-theme=dark] :is(.lvl){background-color:#4a3d1c}
+:root[data-theme=dark] :is(.rank li,.timer .tb,.lvl .bar,.qopts input){background-color:var(--card);color:var(--ink)}
+:root[data-theme=dark] .rank li.me{background-color:#5a4713}
+:root[data-theme=dark] .mapwrap svg{background:#1e293b}
+:root[data-theme=dark] .mapwrap .land{fill:#1b3a2c}
+:root[data-theme=dark] .mapwrap .river{stroke:#27506b}
+:root[data-theme=dark] .mapwrap .rivlab{fill:#7cc4e6}
+:root[data-theme=dark] .mapwrap .lab{fill:#e9eff6;stroke:#1b3a2c}
+:root[data-theme=dark] .mapwrap .dot{fill:#1e293b}
+:root[data-theme=dark] .mapwrap .done .dot{fill:#17402b}
+:root[data-theme=dark] .mapwrap .cur .dot{fill:#c98a10}
+:root[data-theme=dark] .mapwrap .lock .dot{fill:#2b3748}
+@media(prefers-reduced-motion:reduce){.mapwrap .here .halo{animation:none}}

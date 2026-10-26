@@ -24,3 +24,12 @@
 
 ## 4. Thêm audio tiếng Việt sau
 Chép 5 file vào `public/audio/` đặt tên `vi-1.mp3` … `vi-5.mp3` rồi deploy lại. Chưa có file thì nút “Việt” báo chưa tải được và gợi ý nghe trên Drive.
+
+## Cập nhật Apps Script để bật Bảng xếp hạng lớp (phiên bản 10)
+1. Mở Google Sheet → **Tiện ích mở rộng → Apps Script**.
+2. Xóa mã cũ, dán toàn bộ nội dung file `apps-script/Code.gs` mới → **Lưu**.
+3. Chọn hàm `setup` → **Chạy** một lần (để cập nhật trang tính).
+4. **Triển khai → Quản lý bản triển khai → ✏️ → Phiên bản: Mới → Triển khai.** Địa chỉ `/exec` giữ nguyên.
+5. Học sinh nhập **Mã lớp** (ví dụ `6/6`) khi làm thử thách. Bảng xếp hạng ẩn danh hiện ở mục *Bảng xếp hạng lớp*.
+- Trang tính `KetQua` có thêm 3 cột: Mã lớp, Chuỗi đúng dài nhất, Mã đố.
+- Nếu chưa cập nhật Apps Script, các chức năng khác vẫn chạy; riêng bảng xếp hạng sẽ báo "chưa được bật".

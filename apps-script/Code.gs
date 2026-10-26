@@ -3,7 +3,7 @@
  * Cách dùng: xem HUONG-DAN.md (mục 3). Sau khi dán mã mới nhớ: Triển khai → Quản lý bản triển khai → ✏️ → Phiên bản mới → Triển khai.
  */
 const SCORE = 'KetQua', VISIT = 'LuotTruyCap', RATE = 'DanhGia';
-const SCORE_H = ['Thời gian', 'Mã thiết bị (ẩn danh)', 'Lượt chơi', 'Điểm /10', 'Giây làm bài', 'C1','C2','C3','C4','C5','C6','C7','C8','C9','C10'];
+const SCORE_H = ['Thời gian', 'Mã thiết bị (ẩn danh)', 'Lượt chơi', 'Điểm /10', 'Giây làm bài', 'C1','C2','C3','C4','C5','C6','C7','C8','C9','C10', 'Mã lớp', 'Chuỗi đúng dài nhất', 'Mã đố'];
 const VISIT_H = ['Thời gian', 'Mã thiết bị (ẩn danh)'];
 const RATE_H = ['Cập nhật lúc', 'Mã thiết bị (ẩn danh)', 'Số sao'];
 
@@ -63,7 +63,11 @@ function doPost(e) {
       if (row) sh.getRange(row, 1, 1, 3).setValues([[new Date(), dev, stars]]); else sh.appendRow([new Date(), dev, stars]);
     } else { // điểm thử thách
       const ans = (d.ans || []).slice(0, 10); while (ans.length < 10) ans.push('');
-      sheet_(SCORE, SCORE_H).appendRow([new Date(), dev, Number(d.attempt) || '', Number(d.score) || 0, Number(d.sec) || ''].concat(ans));
+      const cls = String(d.cls || '').toUpperCase().replace(/\s+/g, '').slice(0, 12);
+      const sh = sheet_(SCORE, SCORE_H);
+      if (sh.getLastColumn() < SCORE_H.length) sh.getRange(1, 1, 1, SCORE_H.length).setValues([SCORE_H]);
+      sh.appendRow([new Date(), dev, Number(d.attempt) || '', Number(d.score) || 0, Number(d.sec) || ''].concat(ans, [cls, Number(d.streak) || 0, String(d.code || '').slice(0, 8)]));
+      CacheService.getScriptCache().remove('top_' + cls);
     }
     CacheService.getScriptCache().remove('stats');
     return out_({ ok: true });
@@ -84,6 +88,31 @@ function doGet(e) {
     const res = JSON.stringify({ ok: true, visits: vn, ratingCount: rn, ratingAvg: rn ? Math.round((sum / rn) * 10) / 10 : 0 });
     cache.put('stats', res, 30);
     return ContentService.createTextOutput(res).setMimeType(ContentService.MimeType.JSON);
+  }
+  if (e && e.parameter && e.parameter.action === 'top') { // bảng xếp hạng lớp (ẩn danh)
+    const cls = String(e.parameter.cls || '').toUpperCase().replace(/\s+/g, '').slice(0, 12);
+    const me = String(e.parameter.dev || '').slice(0, 12);
+    if (!cls) return out_({ ok: true, rows: [], n: 0 });
+    const cache = CacheService.getScriptCache();
+    let all = cache.get('top_' + cls);
+    if (!all) {
+      const sh = sheet_(SCORE, SCORE_H), n = sh.getLastRow() - 1, best = {};
+      if (n > 0) {
+        sh.getRange(2, 1, n, 16).getValues().forEach(function (r) {
+          if (String(r[15]) !== cls) return;
+          const dev = String(r[1]), score = Number(r[3]) || 0, sec = Number(r[4]) || 9999;
+          const b = best[dev];
+          if (!b || score > b.score || (score === b.score && sec < b.sec)) best[dev] = { d: dev, score: score, sec: sec === 9999 ? 0 : sec };
+        });
+      }
+      const list = Object.keys(best).map(function (k) { return best[k]; }).sort(function (a, b) { return b.score - a.score || (a.sec || 9999) - (b.sec || 9999); });
+      all = JSON.stringify(list);
+      cache.put('top_' + cls, all, 30);
+    }
+    const list = JSON.parse(all);
+    let mine = null;
+    list.forEach(function (x, i) { if (x.d === me) mine = { rank: i + 1, score: x.score }; });
+    return out_({ ok: true, rows: list.slice(0, 10), n: list.length, me: mine });
   }
   return out_({ ok: true, app: 'bcsn' });
 }

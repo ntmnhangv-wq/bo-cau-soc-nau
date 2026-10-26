@@ -9,11 +9,12 @@
 
   /* ---------- lưu trữ (an toàn khi bị chặn) ---------- */
   const KEY = "bcsn.v1";
-  const defaults = { pos: {}, done: {}, prog: {}, autoSync: true, best: null, plays: 0, lang: "bi", speed: 1, vol: 1, last: null, dev: null };
+  let appReady = false;
+  const defaults = { pos: {}, done: {}, prog: {}, autoSync: true, best: null, plays: 0, lang: "bi", speed: 1, vol: 1, last: null, dev: null, qxp: 0, lvl: null, cls: "", noTimer: false, bestStreak: 0 };
   let S = Object.assign({}, defaults);
   try { Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
   if (!S.dev) S.dev = "d" + Math.random().toString(36).slice(2, 10);
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} if (appReady) lvlCheck(); };
   save();
 
   /* ---------- tiện ích ---------- */
@@ -65,7 +66,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "9", date: "26/10/2026", note: "Viết đầy đủ TP. Hồ Chí Minh, bỏ viền đỏ ở cuối trang" };
+  const APP_VERSION = { v: "10", date: "26/10/2026", note: "XP và cấp độ, bản đồ hành trình, quiz có chuỗi và đếm giờ, xếp hạng lớp, ảnh thành tích" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -162,6 +163,43 @@
   const stampCount = () => Object.keys(S.done).length;
   const firstOpen = () => { for (let k = 1; k <= 5; k++) if (!S.done[k]) return k; return 5; };
   const canOpen = (n) => n <= 1 || !!S.done[n - 1];
+
+  /* ---------- điểm kinh nghiệm (XP) và cấp độ ---------- */
+  const LEVELS = [[0, "Tân binh khám phá", "🐣"], [40, "Bạn đồng hành", "🎒"], [120, "Người dẫn đường", "🧭"], [240, "Nhà thám hiểm", "🗺️"], [380, "Hướng dẫn viên", "📣"], [520, "Chuyên gia phố phường", "🏙️"], [660, "Đại sứ TP. Hồ Chí Minh", "🏅"]];
+  function calcXP() {
+    let x = 0;
+    for (const c of D.chapters) {
+      const P = S.prog[c.id];
+      if (P) {
+        x += Object.keys(P.seen || {}).filter((k) => P.seen[k] && +k < c.images.length).length * 2;
+        x += Object.keys(P.vocab || {}).filter((k) => P.vocab[k]).length * 3;
+        if (P.audio) x += 20;
+      }
+      if (S.done[c.id]) x += 50;
+    }
+    return x + (S.qxp || 0);
+  }
+  function levelInfo() {
+    const x = calcXP(); let i = 0;
+    while (i + 1 < LEVELS.length && x >= LEVELS[i + 1][0]) i++;
+    const nx = LEVELS[i + 1] ? LEVELS[i + 1][0] : null, from = LEVELS[i][0];
+    return { x, i, name: LEVELS[i][1], icon: LEVELS[i][2], from, next: nx, pct: nx ? Math.round(((x - from) / (nx - from)) * 100) : 100 };
+  }
+  function lvlCheck() {
+    const L = levelInfo();
+    if (S.lvl === null || S.lvl === undefined) { S.lvl = L.i; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} return; }
+    if (L.i > S.lvl) { S.lvl = L.i; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} setTimeout(() => toast("⬆️ Lên cấp " + (L.i + 1) + ": " + L.icon + " " + L.name + "!"), 700); }
+  }
+  function levelHTML() {
+    const L = levelInfo();
+    return `<div class="lvl" role="group" aria-label="Cấp độ của bạn"><div class="ic" aria-hidden="true">${L.icon}</div><div class="in"><b>Cấp ${L.i + 1} · ${esc(L.name)}</b>
+      <div class="bar" role="img" aria-label="${L.pct}% để lên cấp"><i style="width:${L.pct}%"></i></div>
+      <small>${L.x} XP${L.next ? " · còn " + (L.next - L.x) + " XP để lên cấp" : " · cấp cao nhất!"}</small></div></div>`;
+  }
+  const NICK_A = ["Nhanh nhẹn", "Tò mò", "Dũng cảm", "Chăm chỉ", "Vui vẻ", "Thông thái", "Lanh lợi", "Kiên trì"];
+  const NICK_B = ["Bồ Câu", "Sóc Nâu", "Cú Mèo", "Mèo Mướp", "Cá Heo", "Chú Voi", "Hải Âu", "Thỏ Trắng"];
+  const nick = (dev) => { let h = 0; for (const ch of String(dev)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return NICK_B[h % 8] + " " + NICK_A[Math.floor(h / 8) % 8] + " #" + (h % 90 + 10); };
+  const cleanCls = (v) => String(v || "").toUpperCase().replace(/\s+/g, "").slice(0, 12);
 
   /* ---------- gửi điểm ẩn danh về Google Sheets ---------- */
   const QKEY = "bcsn.queue";
@@ -272,9 +310,35 @@
     if (!parts) return "";
     return `<div class="cprog" role="img" aria-label="Đã học ${Math.round(parts / 3 * 100)}%"><span class="bar"><i style="width:${(parts / 3 * 100).toFixed(0)}%"></i></span><small>Đang học dở · ${(parts / 3 * 100).toFixed(0)}%</small></div>`;
   }
+  /* bản đồ hành trình */
+  function mapHTML() {
+    const pts = [[56, 236], [150, 190], [96, 124], [212, 98], [296, 48]];
+    const icons = ["🏛️", "🗺️", "📸", "🍜", "🚇"], names = ["Gia Định", "Vị trí", "Điểm đến", "Ẩm thực", "Giao thông"];
+    const cur = firstOpen(), allDone = !!S.done[5];
+    const seg = (i) => { // đoạn cong từ điểm i tới i+1 (Catmull-Rom)
+      const p0 = pts[Math.max(i - 1, 0)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(i + 2, 4)];
+      const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+      return `M${p1[0]} ${p1[1]} C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0]} ${p2[1]}`;
+    };
+    let path = ""; for (let i = 0; i < 4; i++) path += `<path class="seg${S.done[i + 1] ? " on" : ""}" d="${seg(i)}"/>`;
+    const nodes = D.chapters.map((c, i) => {
+      const [x, y] = pts[i], open = canOpen(c.id), done = !!S.done[c.id], isCur = !allDone && c.id === cur;
+      const st = done ? "done" : open ? "cur" : "lock";
+      const inner = `<circle class="halo" cx="${x}" cy="${y}" r="26"/><circle class="dot" cx="${x}" cy="${y}" r="22"/><text class="ico" x="${x}" y="${y + 8}" text-anchor="middle">${open ? icons[i] : "🔒"}</text>${done ? `<circle class="tick" cx="${x + 17}" cy="${y - 17}" r="9"/><text class="tk" x="${x + 17}" y="${y - 13}" text-anchor="middle">✓</text>` : ""}<text class="lab" x="${x}" y="${y + 42}" text-anchor="middle">${names[i]}</text>`;
+      const av = isCur ? `<image href="${SOC}" x="${x - 34}" y="${y - 52}" width="28" height="28" clip-path="circle(14px at 14px 14px)" class="avmap"/>` : "";
+      return open ? `<a href="#/chuong/${c.id}" class="mnode ${st}${isCur ? " here" : ""}" aria-label="Chương ${c.id}: ${esc(c.vi)}${done ? " – đã hoàn thành" : isCur ? " – đang học" : ""}">${inner}${av}</a>` : `<g class="mnode ${st}" aria-label="Chương ${c.id} chưa mở">${inner}</g>`;
+    }).join("");
+    return `<div class="mapwrap"><svg viewBox="0 0 360 290" role="group" aria-label="Bản đồ hành trình khám phá TP. Hồ Chí Minh" xmlns="http://www.w3.org/2000/svg">
+      <rect class="land" x="2" y="2" width="356" height="286" rx="22"/>
+      <path class="river" d="M-10 60 C 60 96, 130 20, 190 140 S 300 250, 380 214"/>
+      <text class="rivlab" x="236" y="224" transform="rotate(-18 236 224)">sông Sài Gòn</text>
+      <path class="route" d="${pts.map((q, i) => (i ? "L" : "M") + q[0] + " " + q[1]).join(" ")}" opacity="0"/>
+      ${path}${nodes}</svg><p class="note" style="text-align:center;margin:6px 0 0">${allDone ? "🎉 Bạn đã đi hết hành trình!" : "Chạm vào điểm sáng để tiếp tục hành trình."}</p></div>`;
+  }
   views.toc = () => {
     main.innerHTML = `<section class="view">
       <div class="title-wrap"><h1>Hôm nay, mình đi đâu?</h1><p class="en" lang="en" style="font-weight:700">Where shall we go today?</p></div>
+      ${levelHTML()}${mapHTML()}
       <ol class="toc">${D.chapters.map((c) => { const open = canOpen(c.id); const tag = open ? "a" : "div"; return `<li><${tag} class="chcard${open ? "" : " locked"}" ${open ? `href="#/chuong/${c.id}"` : 'aria-disabled="true"'}>
         <div class="pic"><img src="${c.thumb}" alt="" loading="lazy"><span class="num">Chương ${c.id}</span>${S.done[c.id] ? '<span class="done">✓ Hoàn thành</span>' : !open ? '<span class="lock">🔒</span>' : ""}</div>
         <div class="bd">${chProg(c)}<h3>${esc(c.vi)}</h3><p class="e en" lang="en">${esc(c.en)}</p><p>${open ? esc(c.desc) : "Hoàn thành Chương " + (c.id - 1) + " để mở chương này."}</p></div></${tag}></li>`; }).join("")}</ol>
@@ -282,6 +346,7 @@
         <a class="btn alt sm" href="#/lam-quen">👋 Làm quen Bồ Câu và Sóc Nâu</a>
         <a class="btn alt sm" href="#/doc-truyen">📖 Đọc toàn bộ truyện</a>
         <a class="btn sm" href="#/thu-thach">⭐ Thử thách nhớ nhanh</a>
+        <a class="btn alt sm" href="#/xep-hang">🏆 Bảng xếp hạng lớp</a>
       </div></div></section>`;
   };
 
@@ -488,48 +553,72 @@
   /* Trang 10 – Thử thách */
   let Q = null; // trạng thái lượt chơi
   const letters = ["A", "B", "C", "D"];
-  views.quiz = () => {
-    Q = null;
-    quizIntro();
-  };
+  const TIME_LIMIT = 20;
+  const hashStr = (str) => { let h = 1779033703 ^ str.length; for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); } return h >>> 0; };
+  const rng = (seed) => { let a = seed >>> 0; return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+  const shuffleR = (arr, r) => { arr = arr.slice(); for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+  const cleanCode = (v) => String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+  function stopTimer() { if (Q) { clearTimeout(Q.tm); clearInterval(Q.iv); } }
+  views.quiz = () => { Q = null; quizIntro(); };
   function quizIntro() {
     main.innerHTML = `<section class="view quiz-wrap">
       <div class="title-wrap"><span class="kicker">Thử thách nhớ nhanh</span><h1>Bạn hiểu thành phố đến đâu?</h1>
-        <p style="font-size:1.15rem;font-weight:700">10 câu hỏi vui. Mỗi câu trả lời là một điều mình nhớ thêm!</p></div>
-      <div class="card"><div class="who"><img src="${SOC}" alt="Sóc Nâu"><div class="bubble soc">Chọn một đáp án cho mỗi câu hỏi. Bồ Câu và Sóc Nâu sẽ bật mí lời giải ngay sau đó.</div></div></div>
+        <p style="font-size:1.15rem;font-weight:700">10 câu hỏi vui. Trả lời đúng liên tiếp để nhận thêm XP!</p></div>
+      <div class="card"><div class="who"><img src="${SOC}" alt="Sóc Nâu"><div class="bubble soc">Mỗi câu có ${TIME_LIMIT} giây. Trả lời nhanh và đúng liên tiếp sẽ được thưởng thêm XP. Bồ Câu và Sóc Nâu sẽ bật mí lời giải ngay sau đó.</div></div></div>
       ${S.best !== null ? `<p class="row c" style="margin-top:14px"><span class="best">🏆 Thành tích tốt nhất: ${S.best}/10</span></p>` : ""}
+      <div class="card qopts"><label>Mã lớp <small>(không bắt buộc, ví dụ 6/6)</small><input id="qcls" maxlength="12" autocomplete="off" value="${esc(S.cls || "")}" placeholder="để xem bảng xếp hạng lớp"></label>
+        <label>Mã đố của bạn bè <small>(không bắt buộc)</small><input id="qcode" maxlength="8" autocomplete="off" inputmode="text" placeholder="nhập để cùng thi một đề"></label>
+        <label class="chk"><input type="checkbox" id="qnt" ${S.noTimer ? "checked" : ""}> Chơi không đếm giờ</label>
+        <p class="note" style="margin:0">Không cần nhập tên. Mã lớp chỉ dùng để xếp hạng ẩn danh trong lớp.</p></div>
       <div class="quiz-pics"><button type="button" data-q="22" aria-label="Xem tranh thử thách 1"><img src="img/p23.jpg" alt="${esc(D.img(23).alt)}" loading="lazy"></button><button type="button" data-q="23" aria-label="Xem tranh thử thách 2"><img src="img/p24.jpg" alt="${esc(D.img(24).alt)}" loading="lazy"></button></div>
       <div class="row c"><button class="btn" id="qstart" type="button">▶ Bắt đầu thử thách</button><a class="btn alt" href="#/muc-luc">Đọc các chương trước</a></div></section>`;
     $("#qstart").onclick = startQuiz;
     $$(".quiz-pics button").forEach((b) => (b.onclick = () => { LB.opener = b; lbOpen([D.img(23), D.img(24)], +b.dataset.q - 22); }));
   }
   function startQuiz() {
-    Q = { i: 0, score: 0, ans: [], t0: Date.now(), order: D.quiz.map((q) => shuffle([0, 1, 2, 3])), locked: false };
+    S.cls = cleanCls($("#qcls").value); S.noTimer = $("#qnt").checked; save();
+    const code = cleanCode($("#qcode").value) || String(1000 + Math.floor(Math.random() * 9000));
+    const r = rng(hashStr(code));
+    const qs = shuffleR(D.quiz.map((_, i) => i), r);
+    Q = { i: 0, score: 0, ans: [], ansByQ: new Array(10).fill(0), wrongCh: [], t0: Date.now(), code, qs, order: qs.map(() => shuffleR([0, 1, 2, 3], r)), locked: false, streak: 0, bestStreak: 0, xp: 0, tm: null, iv: null };
+    cleanup = stopTimer;
     quizQuestion();
   }
   function quizQuestion() {
-    const q = D.quiz[Q.i], ord = Q.order[Q.i];
+    const q = D.quiz[Q.qs[Q.i]], ord = Q.order[Q.i];
     main.innerHTML = `<section class="view quiz-wrap">
-      <div class="qhead"><span class="n" aria-label="Câu ${Q.i + 1} trên 10">${Q.i + 1}/10</span><span class="s">✔ Đúng: <span id="sc">${Q.score}</span></span></div>
+      <div class="qhead"><span class="n" aria-label="Câu ${Q.i + 1} trên 10">${Q.i + 1}/10</span><span class="s">${Q.streak >= 2 ? `<span class="streak">🔥 x${Q.streak}</span> · ` : ""}✔ Đúng: <span id="sc">${Q.score}</span></span></div>
       <div class="bar" aria-hidden="true"><i style="width:${(Q.i / 10) * 100}%"></i></div>
+      ${S.noTimer ? "" : `<div class="timer" role="timer" aria-label="Thời gian còn lại"><span class="tb"><i id="tbar"></i></span><b id="tnum">${TIME_LIMIT}</b>s</div>`}
       <h2 class="qtext" id="qt">${esc(q.q)}</h2>
       <ul class="opts" role="group" aria-labelledby="qt">${ord.map((oi, k) => `<li><button class="opt" type="button" data-k="${k}"><span class="L">${letters[k]}</span><span>${esc(q.o[oi])}</span></button></li>`).join("")}</ul>
       <div id="fb" aria-live="assertive"></div>
       <div class="row c" style="margin-top:18px" id="nxt"></div></section>`;
     $$(".opt").forEach((b) => (b.onclick = () => answer(+b.dataset.k)));
+    Q.tq = Date.now();
+    if (!S.noTimer) {
+      const tb = $("#tbar"); tb.style.width = "100%"; void tb.offsetWidth; tb.style.transition = "width " + TIME_LIMIT + "s linear"; tb.style.width = "0%";
+      let left = TIME_LIMIT;
+      Q.iv = setInterval(() => { left--; const t = $("#tnum"); if (t) t.textContent = Math.max(left, 0); }, 1000);
+      Q.tm = setTimeout(() => answer(-1), TIME_LIMIT * 1000);
+    }
   }
   function answer(k) {
-    if (Q.locked) return; Q.locked = true;
-    const q = D.quiz[Q.i], ord = Q.order[Q.i];
-    const ok = ord[k] === q.a;
-    const rightK = ord.indexOf(q.a);
-    Q.ans.push(ok); if (ok) Q.score++;
+    if (Q.locked) return; Q.locked = true; stopTimer();
+    const qi = Q.qs[Q.i], q = D.quiz[qi], ord = Q.order[Q.i];
+    const timeout = k < 0, ok = !timeout && ord[k] === q.a, rightK = ord.indexOf(q.a);
+    const secs = (Date.now() - Q.tq) / 1000;
+    Q.ans.push(ok); Q.ansByQ[qi] = ok ? 1 : 0;
+    let gain = 0;
+    if (ok) { Q.score++; Q.streak++; Q.bestStreak = Math.max(Q.bestStreak, Q.streak); gain = 10 + Math.min(Q.streak - 1, 4) * 2 + (secs <= 8 ? 5 : 0); Q.xp += gain; }
+    else { Q.streak = 0; Q.wrongCh.push(q.ch); }
     $$(".opt").forEach((b, i) => {
       b.disabled = true;
       if (i === rightK) b.classList.add("right"); else if (i === k) b.classList.add("wrong"); else b.classList.add("dim");
     });
     $("#sc").textContent = Q.score;
-    $("#fb").innerHTML = `<div class="feedback ${ok ? "ok" : "no"}"><img src="${ok ? SOC : BC}" alt="${ok ? "Sóc Nâu" : "Bồ Câu"}"><div><h3>${ok ? "Đúng rồi!" : "Cùng ghi nhớ nhé!"}</h3><p style="margin:0">${esc(q.e)}</p>${ok ? "" : `<p class="note" style="margin:6px 0 0">Đáp án đúng là <b>${letters[rightK]}</b>. Xem lại Chương ${q.ch} để nhớ kỹ hơn nhé.</p>`}</div></div>`;
+    const tn = $(".timer"); if (tn) tn.classList.add("stop");
+    $("#fb").innerHTML = `<div class="feedback ${ok ? "ok" : "no"}"><img src="${ok ? SOC : BC}" alt="${ok ? "Sóc Nâu" : "Bồ Câu"}"><div><h3>${timeout ? "⏰ Hết giờ rồi!" : ok ? "Đúng rồi!" : "Cùng ghi nhớ nhé!"}</h3>${ok ? `<p class="gain">+${gain} XP${Q.streak >= 2 ? " · 🔥 chuỗi " + Q.streak + " câu" : ""}${secs <= 8 ? " · ⚡ trả lời nhanh" : ""}</p>` : ""}<p style="margin:0">${esc(q.e)}</p>${ok ? "" : `<p class="note" style="margin:6px 0 0">Đáp án đúng là <b>${letters[rightK]}</b>. Xem lại Chương ${q.ch} để nhớ kỹ hơn nhé.</p>`}</div></div>`;
     const last = Q.i === 9;
     $("#nxt").innerHTML = `<button class="btn ${last ? "coral" : ""}" id="nx" type="button">${last ? "Xem kết quả 🎉" : "Câu tiếp theo →"}</button>`;
     $("#nx").focus();
@@ -539,12 +628,15 @@
     };
   }
   function finishQuiz() {
+    stopTimer();
+    if (Q.score === 10) Q.xp += 20;
     S.plays = (S.plays || 0) + 1;
     if (S.best === null || Q.score > S.best) S.best = Q.score;
+    S.qxp = Math.max(S.qxp || 0, Q.xp); S.bestStreak = Math.max(S.bestStreak || 0, Q.bestStreak);
     Q.done = true; Q.dur = Math.round((Date.now() - Q.t0) / 1000);
-    S.lastScore = { score: Q.score, ans: Q.ans };
+    S.lastScore = { score: Q.score, ans: Q.ansByQ, wrongCh: [...new Set(Q.wrongCh)], code: Q.code, streak: Q.bestStreak, xp: Q.xp, sec: Q.dur };
     save();
-    submitScore({ app: "bcsn", dev: S.dev, attempt: S.plays, score: Q.score, total: 10, ans: Q.ans.map((x) => (x ? 1 : 0)), sec: Q.dur, ts: new Date().toISOString() });
+    submitScore({ app: "bcsn", dev: S.dev, attempt: S.plays, score: Q.score, total: 10, ans: Q.ansByQ, sec: Q.dur, cls: S.cls || "", streak: Q.bestStreak, code: Q.code, ts: new Date().toISOString() });
     location.hash = "#/ket-qua";
   }
 
@@ -554,21 +646,113 @@
     if (!R) return location.replace("#/thu-thach");
     const tier = D.results.find((r) => R.score >= r.min);
     const stars = tier.badge === "gold" ? 3 : tier.badge === "silver" ? 2 : 1;
-    const wrongCh = [...new Set(R.ans.map((ok, i) => (ok ? null : D.quiz[i].ch)).filter(Boolean))];
+    const wrongCh = R.wrongCh || [...new Set(R.ans.map((ok, i) => (ok ? null : D.quiz[i].ch)).filter(Boolean))];
     main.innerHTML = `<section class="view result">
       <div class="rpic"><img class="av" src="${SOC}" alt="Sóc Nâu"><img class="av" src="${BC}" alt="Bồ Câu"></div>
       <div class="stars" aria-label="${stars} trên 3 ngôi sao">${"⭐".repeat(stars)}${"☆".repeat(3 - stars)}</div>
       <h1>Hành trình đã hoàn thành!</h1>
       <div class="score">Bạn trả lời đúng <b>${R.score}</b>/10 câu</div>
+      <div class="chips" style="justify-content:center;margin:8px 0"><span class="chip">✨ +${R.xp || 0} XP</span><span class="chip">🔥 Chuỗi dài nhất: ${R.streak || 0}</span>${R.sec ? `<span class="chip">⏱ ${R.sec} giây</span>` : ""}</div>
       <div class="card" style="margin:12px 0"><h3>${esc(tier.title)}</h3><p style="margin:0">${esc(tier.text)}</p></div>
+      ${levelHTML()}
       <span class="best">🏆 Thành tích tốt nhất: ${S.best}/10</span>
       ${wrongCh.length ? `<div class="card review"><b>Muốn nhớ thêm? Đọc lại:</b><ul>${wrongCh.map((c) => `<li><a href="#/chuong/${c}">Chương ${c}: ${esc(D.chapters[c - 1].vi)}</a></li>`).join("")}</ul></div>` : `<p>Bạn không sai câu nào, thật tuyệt vời! 🎉</p>`}
+      ${R.code ? `<div class="card codecard"><b>🎲 Mã đố của lượt này: <span class="code">${esc(R.code)}</span></b><p class="note" style="margin:4px 0 8px">Gửi mã này cho bạn bè. Bạn nhập vào ô “Mã đố” khi bắt đầu thì cả hai cùng thi một đề, cùng thứ tự đáp án.</p><button class="btn sm alt" id="cpcode" type="button">📋 Chép mã</button></div>` : ""}
+      <div class="row c" style="margin-top:12px"><a class="btn leaf" href="#/xep-hang">🏆 ${S.cls ? "Xem xếp hạng lớp " + esc(S.cls) : "Xem bảng xếp hạng lớp"}</a><button class="btn alt" id="sharebtn" type="button">🖼 Tạo ảnh thành tích</button></div>
+      <div id="sharebox"></div>
       ${CFG.SHEETS_URL ? '<p class="note">Điểm được ghi ẩn danh (không có tên) để thầy cô thống kê.</p>' : ""}
       <div style="margin-top:16px">${rateHTML()}</div>
       <div class="row c" style="margin-top:20px"><button class="btn" id="again" type="button">↻ Chơi lại</button><a class="btn leaf" href="#/muc-luc">Khám phá tiếp</a><a class="btn alt" href="#/">Về trang chủ</a></div></section>`;
     $("#again").onclick = () => { S.lastScore = null; save(); location.hash = "#/thu-thach"; };
+    const cp = $("#cpcode"); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(R.code); toast("📋 Đã chép mã " + R.code); } catch (e) { toast("Mã đố của bạn: " + R.code); } };
+    mountShare();
     mountRate();
   };
+
+  /* Bảng xếp hạng lớp (ẩn danh) */
+  views.rank = () => {
+    main.innerHTML = `<section class="view quiz-wrap">
+      <div class="title-wrap"><span class="kicker">Bảng xếp hạng lớp</span><h1>Ai là nhà khám phá số 1?</h1><p class="note">Ẩn danh: chỉ hiện biệt danh vui, không có tên thật. Xếp theo điểm cao nhất, rồi đến thời gian làm bài.</p></div>
+      <div class="card qopts"><label>Mã lớp <small>(ví dụ 6/6)</small><input id="rcls" maxlength="12" autocomplete="off" value="${esc(S.cls || "")}" placeholder="nhập mã lớp"></label>
+        <div class="row"><button class="btn sm" id="rgo" type="button">Xem bảng</button><a class="btn sm alt" href="#/thu-thach">⭐ Làm thử thách</a></div></div>
+      <div id="rlist" aria-live="polite"></div></section>`;
+    const box = $("#rlist");
+    async function load() {
+      const cls = cleanCls($("#rcls").value);
+      if (!cls) { box.innerHTML = '<p class="note">Hãy nhập mã lớp nhé.</p>'; return; }
+      S.cls = cls; save();
+      if (!CFG.SHEETS_URL) { box.innerHTML = '<p class="note">Bảng xếp hạng chưa được bật.</p>'; return; }
+      if (!navigator.onLine) { box.innerHTML = '<p class="note">Cần có mạng để xem bảng xếp hạng.</p>'; return; }
+      box.innerHTML = '<p class="note">Đang tải…</p>';
+      try {
+        await flushQueue();
+        const r = await fetch(CFG.SHEETS_URL + "?action=top&cls=" + encodeURIComponent(cls) + "&dev=" + encodeURIComponent(S.dev) + "&t=" + Date.now(), { cache: "no-store" });
+        const j = await r.json();
+        if (!j || !j.ok || !Array.isArray(j.rows)) { box.innerHTML = '<p class="note">Bảng xếp hạng chưa được bật. Thầy cô cần cập nhật Apps Script theo hướng dẫn.</p>'; return; }
+        if (!j.rows.length) { box.innerHTML = `<div class="card">Lớp <b>${esc(cls)}</b> chưa có ai làm thử thách. Hãy là người đầu tiên!</div>`; return; }
+        const medal = ["🥇", "🥈", "🥉"], mine = String(S.dev).slice(0, 12);
+        const row = (x, i, rank) => `<li class="${x.d === mine ? "me" : ""}"><span class="rk">${medal[rank - 1] || rank}</span><span class="nm">${esc(nick(x.d))}${x.d === mine ? " <em>(bạn)</em>" : ""}</span><span class="sc">${x.score}/10</span><span class="tm">${x.sec ? x.sec + " s" : ""}</span></li>`;
+        let html = `<div class="card"><h3>Lớp ${esc(cls)} · ${j.n} bạn đã thi</h3><ol class="rank">${j.rows.map((x, i) => row(x, i, i + 1)).join("")}</ol>`;
+        if (j.me && j.me.rank > j.rows.length) html += `<p class="note" style="margin:8px 0 0">Bạn đang đứng hạng <b>${j.me.rank}</b>/${j.n} với ${j.me.score}/10 điểm. Cố lên nào!</p>`;
+        box.innerHTML = html + "</div>";
+      } catch (e) { box.innerHTML = '<p class="note">Chưa tải được bảng xếp hạng. Bạn thử lại sau nhé.</p>'; }
+    }
+    $("#rgo").onclick = load;
+    $("#rcls").onkeydown = (e) => { if (e.key === "Enter") load(); };
+    if (S.cls) load();
+  };
+
+  /* ảnh thành tích để chia sẻ */
+  async function makeShareCard() {
+    const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    const g = cv.getContext("2d");
+    try { await Promise.all([document.fonts.load('800 64px "Baloo 2"'), document.fonts.load("700 36px Nunito")]); } catch (e) {}
+    const load = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+    const [soc, bc] = await Promise.all([load(SOC), load(BC)]);
+    const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+    const txt = (t, x, y, font, col) => { g.font = font; g.fillStyle = col; g.textAlign = "center"; g.fillText(t, x, y); };
+    const HEAD = '"Baloo 2","Trebuchet MS",sans-serif', BODY = "Nunito,system-ui,sans-serif";
+    const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, "#bfe3f7"); gr.addColorStop(1, "#fffaf0"); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    rr(50, 50, W - 100, H - 100, 48); g.fillStyle = "#ffffff"; g.fill(); g.lineWidth = 8; g.strokeStyle = "#24384a"; g.stroke();
+    txt("HỘ CHIẾU KHÁM PHÁ", W / 2, 165, "800 78px " + HEAD, "#24384a");
+    txt("Bồ Câu & Sóc Nâu · TP. Hồ Chí Minh", W / 2, 225, "700 38px " + BODY, "#4f6475");
+    [[soc, 370], [bc, 710]].forEach(([im, x]) => { g.save(); g.beginPath(); g.arc(x, 360, 100, 0, Math.PI * 2); g.closePath(); g.clip(); if (im) g.drawImage(im, x - 100, 260, 200, 200); else { g.fillStyle = "#f7b731"; g.fillRect(x - 100, 260, 200, 200); } g.restore(); g.beginPath(); g.arc(x, 360, 100, 0, Math.PI * 2); g.lineWidth = 8; g.strokeStyle = "#24384a"; g.stroke(); });
+    const L = levelInfo();
+    rr(120, 510, W - 240, 210, 36); g.fillStyle = "#fff3cf"; g.fill(); g.lineWidth = 6; g.strokeStyle = "#24384a"; g.stroke();
+    g.font = "100px sans-serif"; g.textAlign = "center"; g.fillText(L.icon, 230, 640);
+    g.textAlign = "left"; g.font = "800 54px " + HEAD; g.fillStyle = "#24384a"; g.fillText("Cấp " + (L.i + 1) + " · " + L.name, 320, 590);
+    rr(320, 615, 600, 28, 14); g.fillStyle = "#ffffff"; g.fill(); g.lineWidth = 4; g.stroke();
+    if (L.pct > 0) { rr(320, 615, Math.max(28, 600 * L.pct / 100), 28, 14); g.fillStyle = "#2f9e63"; g.fill(); }
+    g.font = "700 34px " + BODY; g.fillStyle = "#4f6475"; g.fillText(L.x + " XP", 320, 690);
+    const icons = ["🏛️", "🗺️", "📸", "🍜", "🚇"];
+    D.chapters.forEach((c, i) => {
+      const x = 170 + i * 185, y = 870, got = !!S.done[c.id];
+      g.beginPath(); g.arc(x, y, 72, 0, Math.PI * 2); g.fillStyle = got ? "#d9f2e3" : "#e8ecef"; g.fill(); g.lineWidth = 6; g.strokeStyle = got ? "#2f9e63" : "#a9b8c8"; g.stroke();
+      g.textAlign = "center"; g.font = "70px sans-serif"; g.fillStyle = "#000"; g.globalAlpha = got ? 1 : 0.35; g.fillText(got ? icons[i] : "❔", x, y + 24); g.globalAlpha = 1;
+      txt("Chương " + c.id, x, y + 118, "700 30px " + BODY, got ? "#24384a" : "#8a99a8");
+    });
+    txt(stampCount() + "/5 tem đã thu thập", W / 2, 1060, "800 46px " + HEAD, "#24384a");
+    const medal = S.best === null ? null : D.results.find((r) => S.best >= r.min);
+    g.font = "110px sans-serif"; g.textAlign = "center"; g.fillText(medal ? (medal.badge === "gold" ? "🥇" : medal.badge === "silver" ? "🥈" : "🥉") : "⭐", 300, 1190);
+    g.textAlign = "left"; g.font = "800 50px " + HEAD; g.fillStyle = "#24384a"; g.fillText(S.best === null ? "Chưa làm thử thách" : "Thử thách: " + S.best + "/10", 390, 1170);
+    g.font = "700 34px " + BODY; g.fillStyle = "#4f6475"; g.fillText(S.bestStreak ? "🔥 Chuỗi đúng dài nhất: " + S.bestStreak : "Cùng khám phá nhé!", 390, 1220);
+    txt(location.host || "Bồ Câu & Sóc Nâu", W / 2, 1290, "700 34px " + BODY, "#4f6475");
+    return new Promise((res) => cv.toBlob(res, "image/png"));
+  }
+  function mountShare() {
+    const btn = $("#sharebtn"), box = $("#sharebox"); if (!btn || !box) return;
+    btn.onclick = async () => {
+      btn.disabled = true; box.innerHTML = '<p class="note">Đang vẽ ảnh…</p>';
+      try {
+        const blob = await makeShareCard(), url = URL.createObjectURL(blob);
+        const file = new File([blob], "thanh-tich-bo-cau-soc-nau.png", { type: "image/png" });
+        const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
+        box.innerHTML = `<div class="sharebox"><img class="sharepic" src="${url}" alt="Ảnh thành tích của bạn"><div class="row c">${canShare ? '<button class="btn sm" id="doshare" type="button">📤 Chia sẻ</button>' : ""}<a class="btn sm alt" href="${url}" download="thanh-tich-bo-cau-soc-nau.png">⬇ Lưu ảnh</a></div><p class="note" style="text-align:center">Trên điện thoại: nhấn giữ vào ảnh để lưu.</p></div>`;
+        const ds = $("#doshare"); if (ds) ds.onclick = () => navigator.share({ files: [file], title: "Thành tích của mình", text: "Mình đang khám phá TP. Hồ Chí Minh cùng Bồ Câu và Sóc Nâu!" }).catch(() => {});
+      } catch (e) { box.innerHTML = '<p class="note">Chưa tạo được ảnh. Bạn thử lại nhé.</p>'; }
+      btn.disabled = false;
+    };
+  }
 
   /* Trang 12 – Giới thiệu */
   views.about = () => {
@@ -596,10 +780,12 @@
     const n = stampCount();
     main.innerHTML = `<section class="view stack">
       <div class="title-wrap"><span class="kicker">Hộ chiếu khám phá</span><h1>Bạn đã thu thập ${n}/5 tem</h1><p class="note">Xem hết tranh, lật hết từ vựng và nghe hết audio của một chương để nhận tem. Không cần nhập tên!</p></div>
+      ${levelHTML()}
       <div class="stamps">${D.chapters.map((c, i) => `<div class="stamp ${S.done[c.id] ? "got" : ""}"><div class="ic" aria-hidden="true">${icons[i]}</div><b>Chương ${c.id}</b><small>${esc(c.vi)}</small><br><small>${S.done[c.id] ? "✓ Đã nhận" : "Chưa nhận"}</small></div>`).join("")}</div>
       <div class="card badge"><div class="medal ${medal ? medal.badge : ""}" aria-hidden="true">${medal ? (medal.badge === "gold" ? "🥇" : medal.badge === "silver" ? "🥈" : "🥉") : "❔"}</div>
         <div>${medal ? `<b>${esc(medal.title)}</b><br>Thành tích tốt nhất: ${S.best}/10 · Đã chơi ${S.plays} lần` : `<b>Chưa có huy hiệu</b><br>Hoàn thành thử thách để nhận huy hiệu nhé!`}</div></div>
       ${n === 5 ? '<div class="card" style="background:var(--leaf-l)"><b>🎉 Bạn đã đủ 5 tem! Nhà khám phá TP. Hồ Chí Minh thực thụ.</b></div>' : ""}
+      <div class="row c"><button class="btn" id="sharebtn" type="button">🖼 Tạo ảnh thành tích</button><a class="btn alt" href="#/xep-hang">🏆 Xếp hạng lớp</a></div><div id="sharebox"></div>
       <div class="card"><h3>📲 Dùng không cần mạng</h3>
         <p class="note" style="margin-top:0">Tải trước audio để nghe offline trong lớp học hoặc trên xe.</p>
         <div class="row"><button class="btn sm" id="dl" type="button">⬇ Tải audio về máy</button><button class="btn sm alt" id="inst" type="button" hidden>Cài app lên màn hình</button></div>
@@ -608,7 +794,7 @@
       <div class="row c"><button class="btn sm alt" id="reset" type="button">Xóa tiến trình trên máy này</button></div>
     </section>`;
     if (deferredInstall) { $("#inst").hidden = false; $("#inst").onclick = () => { deferredInstall.prompt(); deferredInstall = null; $("#inst").hidden = true; }; }
-    $("#dl").onclick = downloadAudio;
+    $("#dl").onclick = downloadAudio; mountShare();
     $("#reset").onclick = () => {
       if (!confirm("Xóa các tem, vị trí đang đọc và thành tích trên máy này?")) return;
       const dev = S.dev; S = Object.assign({}, defaults, { dev }); save(); views.passport();
@@ -631,7 +817,7 @@
   }
 
   /* ---------- bộ định tuyến ---------- */
-  const titles = { home: "Bồ Câu & Sóc Nâu – TP. Hồ Chí Minh, thành phố tôi yêu", toc: "Mục lục", meet: "Làm quen", book: "Đọc toàn bộ truyện", end: "Hẹn gặp lại", quiz: "Thử thách", result: "Kết quả", about: "Giới thiệu", passport: "Hộ chiếu khám phá" };
+  const titles = { home: "Bồ Câu & Sóc Nâu – TP. Hồ Chí Minh, thành phố tôi yêu", toc: "Mục lục", meet: "Làm quen", book: "Đọc toàn bộ truyện", end: "Hẹn gặp lại", quiz: "Thử thách", result: "Kết quả", about: "Giới thiệu", passport: "Hộ chiếu khám phá", rank: "Bảng xếp hạng lớp" };
   function route() {
     if (cleanup) { cleanup(); cleanup = null; }
     stopAudio(); lbClose(); curViewer = null;
@@ -649,6 +835,7 @@
       case "ket-qua": name = "result"; break;
       case "gioi-thieu": name = "about"; break;
       case "ho-chieu": name = "passport"; break;
+      case "xep-hang": name = "rank"; break;
       default: name = "home";
     }
     if (name === "chapter" && arg >= 1 && arg <= 5 && !canOpen(arg)) { const f = firstOpen(); toast("🔒 Hãy hoàn thành Chương " + f + " trước nhé!"); location.replace("#/chuong/" + f); return; }
@@ -660,6 +847,7 @@
     if (name !== "quiz") main.focus({ preventScroll: true });
   }
   window.addEventListener("hashchange", route);
+  appReady = true; lvlCheck();
   route();
   renderStats();
   countVisit().then(loadStats);
