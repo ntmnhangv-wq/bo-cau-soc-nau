@@ -66,7 +66,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "13", date: "26/10/2026", note: "Bỏ chế độ cuộn dọc, thêm hiệu ứng lật trang, tự lật theo giọng đọc" };
+  const APP_VERSION = { v: "14", date: "26/10/2026", note: "Bỏ cuộn dọc, thêm hiệu ứng lật trang, sửa lỗi không bấm được menu" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -555,7 +555,7 @@
     const canSay = "speechSynthesis" in window;
     $$(".say-w").forEach((b) => { if (!canSay) { b.hidden = true; return; } b.onclick = () => { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(b.dataset.w); u.lang = "en-US"; u.rate = 0.85; speechSynthesis.speak(u); } catch (e) {} }; });
 
-    cleanup = () => { if (io) io.disconnect(); hideWord(); try { speechSynthesis.cancel(); } catch (e) {} document.removeEventListener("keydown", fsKey); document.body.classList.remove("noscroll"); try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {} clearTimeout(hideT); };
+    cleanup = () => { hideWord(); try { speechSynthesis.cancel(); } catch (e) {} document.removeEventListener("keydown", fsKey); document.body.classList.remove("noscroll"); try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {} clearTimeout(hideT); };
   };
 
   /* Đọc toàn bộ truyện */
