@@ -157,18 +157,74 @@
   const QKEY = "bcsn.queue";
   const getQ = () => { try { return JSON.parse(localStorage.getItem(QKEY)) || []; } catch (e) { return []; } };
   const setQ = (q) => { try { localStorage.setItem(QKEY, JSON.stringify(q)); } catch (e) {} };
+  let flushing = false;
   async function flushQueue() {
-    if (!CFG.SHEETS_URL) return;
-    let q = getQ(); if (!q.length || !navigator.onLine) return;
-    const rest = [];
-    for (const rec of q) {
-      try { await fetch(CFG.SHEETS_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(rec) }); }
-      catch (e) { rest.push(rec); }
-    }
-    setQ(rest);
+    if (!CFG.SHEETS_URL || flushing) return;
+    if (!getQ().length || !navigator.onLine) return;
+    flushing = true;
+    try {
+      while (getQ().length) {
+        const rec = getQ()[0];
+        try { await fetch(CFG.SHEETS_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(rec) }); }
+        catch (e) { break; }
+        setQ(getQ().slice(1));
+      }
+    } finally { flushing = false; }
   }
-  function submitScore(rec) { if (!CFG.SHEETS_URL) return; const q = getQ(); q.push(rec); setQ(q); flushQueue(); }
-  window.addEventListener("online", flushQueue);
+  function send(rec) { if (!CFG.SHEETS_URL) return Promise.resolve(); const q = getQ(); q.push(rec); setQ(q); return flushQueue(); }
+  function submitScore(rec) { return send(Object.assign({ type: "score" }, rec)); }
+  window.addEventListener("online", () => flushQueue().then(loadStats));
+
+  /* ---------- lượt truy cập & đánh giá (đọc từ Apps Script) ---------- */
+  let STATS = null;
+  try { STATS = JSON.parse(localStorage.getItem("bcsn.stats")); } catch (e) {}
+  function renderStats() {
+    const el = $("#stats"); if (!el) return;
+    if (!STATS || !CFG.SHEETS_URL) { el.textContent = ""; return; }
+    const nf = (n) => Number(n || 0).toLocaleString("vi-VN");
+    let t = "👀 " + nf(STATS.visits) + " lượt truy cập";
+    if (STATS.ratingCount > 0) t += " · ⭐ " + String(STATS.ratingAvg).replace(".", ",") + "/5 (" + nf(STATS.ratingCount) + " đánh giá)";
+    el.textContent = t;
+    $$(".rate-sum").forEach((x) => (x.textContent = STATS.ratingCount > 0 ? "Điểm trung bình " + String(STATS.ratingAvg).replace(".", ",") + "/5 từ " + nf(STATS.ratingCount) + " lượt đánh giá." : "Hãy là người đầu tiên đánh giá!"));
+  }
+  async function loadStats() {
+    renderStats();
+    if (!CFG.SHEETS_URL || !navigator.onLine) return;
+    try {
+      const r = await fetch(CFG.SHEETS_URL + "?action=stats", { cache: "no-store" });
+      const j = await r.json();
+      if (j && j.ok) { STATS = j; try { localStorage.setItem("bcsn.stats", JSON.stringify(j)); } catch (e) {} renderStats(); }
+    } catch (e) {}
+  }
+  function countVisit() {
+    if (!CFG.SHEETS_URL) return Promise.resolve();
+    let seen = false;
+    try { seen = sessionStorage.getItem("bcsn.visit") === "1"; sessionStorage.setItem("bcsn.visit", "1"); } catch (e) {}
+    if (seen) return Promise.resolve();
+    return send({ type: "visit", app: "bcsn", dev: S.dev, ts: new Date().toISOString() });
+  }
+
+  /* ---------- đánh giá bằng sao ---------- */
+  const STAR_TXT = ["", "Chưa hay lắm", "Tạm được", "Khá hay", "Rất hay", "Tuyệt vời!"];
+  function rateHTML() {
+    return `<div class="card rate"><h3>⭐ Bạn thấy app thế nào?</h3>
+      <div class="stars-in" role="radiogroup" aria-label="Chọn số sao đánh giá">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="star" role="radio" data-s="${n}" aria-checked="false" aria-label="${n} sao">★</button>`).join("")}</div>
+      <p class="rate-msg" aria-live="polite"></p><p class="note rate-sum"></p></div>`;
+  }
+  function mountRate() {
+    const root = $(".rate"); if (!root) return;
+    const btns = $$(".star", root), msg = $(".rate-msg", root);
+    const paint = (n) => { btns.forEach((b) => { const on = +b.dataset.s <= n; b.classList.toggle("on", on); b.setAttribute("aria-checked", +b.dataset.s === S.rating); }); };
+    const show = () => { paint(S.rating || 0); msg.textContent = S.rating ? "Bạn đã chọn " + S.rating + " sao – " + STAR_TXT[S.rating] + " (bấm sao khác để đổi)" : "Chạm vào ngôi sao để chọn."; };
+    btns.forEach((b) => {
+      b.onclick = () => {
+        S.rating = +b.dataset.s; save(); show(); toast("💛 Cảm ơn bạn đã đánh giá!");
+        send({ type: "rating", app: "bcsn", dev: S.dev, stars: S.rating, ts: new Date().toISOString() }).then(() => setTimeout(loadStats, 1500));
+      };
+      b.onmouseenter = () => paint(+b.dataset.s); b.onmouseleave = () => paint(S.rating || 0);
+    });
+    show(); renderStats();
+  }
 
   /* ======================================================
      CÁC TRANG
@@ -426,8 +482,10 @@
       <span class="best">🏆 Thành tích tốt nhất: ${S.best}/10</span>
       ${wrongCh.length ? `<div class="card review"><b>Muốn nhớ thêm? Đọc lại:</b><ul>${wrongCh.map((c) => `<li><a href="#/chuong/${c}">Chương ${c}: ${esc(D.chapters[c - 1].vi)}</a></li>`).join("")}</ul></div>` : `<p>Bạn không sai câu nào, thật tuyệt vời! 🎉</p>`}
       ${CFG.SHEETS_URL ? '<p class="note">Điểm được ghi ẩn danh (không có tên) để thầy cô thống kê.</p>' : ""}
+      <div style="margin-top:16px">${rateHTML()}</div>
       <div class="row c" style="margin-top:20px"><button class="btn" id="again" type="button">↻ Chơi lại</button><a class="btn leaf" href="#/muc-luc">Khám phá tiếp</a><a class="btn alt" href="#/">Về trang chủ</a></div></section>`;
     $("#again").onclick = () => { S.lastScore = null; save(); location.hash = "#/thu-thach"; };
+    mountRate();
   };
 
   /* Trang 12 – Giới thiệu */
@@ -440,9 +498,11 @@
         <div class="authors"><b>Tác giả</b><br>Nguyễn Trần Mai Trân, lớp 9/6<br>Lê Cao Di Quỳnh, lớp 9/7<br>Trường THCS Gò Vấp</div>
         <div class="row"><a class="btn" href="${D.links.book}" target="_blank" rel="noopener">📘 Đọc sách gốc trên Google Drive</a>
         <a class="btn alt" href="${D.links.project}" target="_blank" rel="noopener">📁 Xem hồ sơ dự án và poster</a></div>
+        ${rateHTML()}
         <details class="poster-d"><summary>Xem thêm về dự án (poster)</summary><img src="img/poster.jpg" alt="Poster dự án Bồ Câu và Sóc Nâu" loading="lazy"></details>
         <div class="row"><a class="btn alt sm" href="#/">Về trang chủ</a></div>
       </div></section>`;
+    mountRate();
   };
 
   /* Hộ chiếu khám phá */
@@ -517,6 +577,8 @@
   }
   window.addEventListener("hashchange", route);
   route();
+  renderStats();
+  countVisit().then(loadStats);
   flushQueue();
 
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
