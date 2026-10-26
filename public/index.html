@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bồ Câu &amp; Sóc Nâu – TP.HCM, thành phố tôi yêu</title>
+<meta name="description" content="Cùng Bồ Câu và Sóc Nâu khám phá Thành phố Hồ Chí Minh qua tranh truyện, lời Việt - Anh và audio. Let’s explore Ho Chi Minh City!">
+<meta name="theme-color" content="#f7b731">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preload" href="fonts/baloo-2-vietnamese-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Bỏ qua, đến nội dung</a>
+<header class="topbar">
+  <div class="in">
+    <a class="brand" href="#/" aria-label="Về trang chủ">
+      <img src="img/bocau.jpg" alt=""><span>Bồ Câu &amp; Sóc Nâu</span>
+    </a>
+    <a class="navbtn" href="#/muc-luc" aria-label="Mục lục">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span class="t">Mục lục</span></a>
+    <a class="navbtn" href="#/ho-chieu" aria-label="Hộ chiếu khám phá">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="11" r="3.2"/><path d="M9 17h6"/></svg><span class="t">Hộ chiếu</span></a>
+    <a class="navbtn" href="#/gioi-thieu" aria-label="Giới thiệu sách">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg><span class="t">Giới thiệu</span></a>
+  </div>
+</header>
+
+<main id="main" tabindex="-1" aria-live="polite"></main>
+<footer>Bồ Câu &amp; Sóc Nâu · Trường THCS Gò Vấp · Thành phố Hồ Chí Minh – Thành phố tôi yêu</footer>
+
+<div class="lightbox" id="lb" role="dialog" aria-modal="true" aria-label="Xem tranh phóng to">
+  <div class="lb-top">
+    <strong id="lb-ind"></strong>
+    <button class="btn alt sm" id="lb-close" type="button">✕ Đóng</button>
+  </div>
+  <div class="lb-body" id="lb-body"><img id="lb-img" alt=""></div>
+  <div class="lb-nav">
+    <button class="btn alt sm" id="lb-prev" type="button">← Trước</button>
+    <button class="btn alt sm" id="lb-zoom" type="button">🔍 Phóng to hơn</button>
+    <button class="btn alt sm" id="lb-next" type="button">Sau →</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
