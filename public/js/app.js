@@ -9,7 +9,7 @@
 
   /* ---------- lưu trữ (an toàn khi bị chặn) ---------- */
   const KEY = "bcsn.v1";
-  const defaults = { pos: {}, stamps: {}, best: null, plays: 0, lang: "bi", speed: 1, vol: 1, last: null, dev: null };
+  const defaults = { pos: {}, done: {}, prog: {}, autoSync: true, best: null, plays: 0, lang: "bi", speed: 1, vol: 1, last: null, dev: null };
   let S = Object.assign({}, defaults);
   try { Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
   if (!S.dev) S.dev = "d" + Math.random().toString(36).slice(2, 10);
@@ -102,7 +102,8 @@
     st.addEventListener("pointerdown", (e) => { x0 = e.clientX; });
     st.addEventListener("pointerup", (e) => { if (x0 === null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1); });
     st.addEventListener("pointercancel", () => { x0 = null; });
-    curViewer = { go };
+    const set = (n) => { if (n < 0 || n >= items.length || n === i) return; i = n; render(); };
+    curViewer = { go, set };
     render();
   }
   document.addEventListener("keydown", (e) => {
@@ -146,12 +147,9 @@
   }
 
   /* ---------- tem hộ chiếu ---------- */
-  function award(n) {
-    if (S.stamps[n]) return;
-    S.stamps[n] = Date.now(); save();
-    toast("🏅 Bạn nhận được tem Chương " + n + "!");
-  }
-  const stampCount = () => Object.keys(S.stamps).length;
+  const stampCount = () => Object.keys(S.done).length;
+  const firstOpen = () => { for (let k = 1; k <= 5; k++) if (!S.done[k]) return k; return 5; };
+  const canOpen = (n) => n <= 1 || !!S.done[n - 1];
 
   /* ---------- gửi điểm ẩn danh về Google Sheets ---------- */
   const QKEY = "bcsn.queue";
@@ -258,9 +256,9 @@
   views.toc = () => {
     main.innerHTML = `<section class="view">
       <div class="title-wrap"><h1>Hôm nay, mình đi đâu?</h1><p class="en" lang="en" style="font-weight:700">Where shall we go today?</p></div>
-      <ol class="toc">${D.chapters.map((c) => `<li><a class="chcard" href="#/chuong/${c.id}">
-        <div class="pic"><img src="${c.thumb}" alt="" loading="lazy"><span class="num">Chương ${c.id}</span>${S.stamps[c.id] ? '<span class="done">✓ Đã đọc</span>' : ""}</div>
-        <div class="bd"><h3>${esc(c.vi)}</h3><p class="e en" lang="en">${esc(c.en)}</p><p>${esc(c.desc)}</p></div></a></li>`).join("")}</ol>
+      <ol class="toc">${D.chapters.map((c) => { const open = canOpen(c.id); const tag = open ? "a" : "div"; return `<li><${tag} class="chcard${open ? "" : " locked"}" ${open ? `href="#/chuong/${c.id}"` : 'aria-disabled="true"'}>
+        <div class="pic"><img src="${c.thumb}" alt="" loading="lazy"><span class="num">Chương ${c.id}</span>${S.done[c.id] ? '<span class="done">✓ Hoàn thành</span>' : !open ? '<span class="lock">🔒</span>' : ""}</div>
+        <div class="bd"><h3>${esc(c.vi)}</h3><p class="e en" lang="en">${esc(c.en)}</p><p>${open ? esc(c.desc) : "Hoàn thành Chương " + (c.id - 1) + " để mở chương này."}</p></div></${tag}></li>`; }).join("")}</ol>
       <div class="minor"><div class="row c">
         <a class="btn alt sm" href="#/lam-quen">👋 Làm quen Bồ Câu và Sóc Nâu</a>
         <a class="btn alt sm" href="#/doc-truyen">📖 Đọc toàn bộ truyện</a>
@@ -289,6 +287,9 @@
     const ch = D.chapters.find((c) => c.id === n);
     if (!ch) return location.replace("#/muc-luc");
     S.last = n; save();
+    const P = (S.prog[n] = S.prog[n] || { seen: {}, vocab: {}, audio: false });
+    const badTrack = {};
+    let lastIdx = -1;
     let lang = S.lang, track = "vi", playing = false, dragging = false;
     const nextHref = n < 5 ? "#/chuong/" + (n + 1) : "#/ket-thuc";
     main.innerHTML = `<section class="view">
@@ -313,6 +314,7 @@
             <label class="vol">${ICON.vol}<span class="sr">Âm lượng</span><input id="vol" type="range" min="0" max="1" step="0.05" value="${S.vol}"></label>
             <div class="seg speed" role="group" aria-label="Tốc độ">${[0.75, 1, 1.25, 1.5].map((v) => `<button type="button" data-speed="${v}" aria-pressed="${S.speed === v}">${v}×</button>`).join("")}</div>
           </div>
+          ${ch.sync ? `<label class="sync"><input type="checkbox" id="autosync" ${S.autoSync ? "checked" : ""}> Tranh tự chuyển theo lời đọc</label>` : ""}
           <p class="note warn" id="anote" hidden></p>
         </div>
       </div>
@@ -322,13 +324,15 @@
         <div class="vgrid">${ch.vocab.map((v, k) => `<div style="position:relative"><button class="vcard" type="button" aria-pressed="false" data-k="${k}"><span class="w" lang="en">${esc(v[0])}</span><span class="hint">chạm để xem nghĩa</span><span class="m">${esc(v[1])}</span></button><button class="say-w" type="button" data-w="${esc(v[0])}" aria-label="Nghe phát âm ${esc(v[0])}">${ICON.vol}</button></div>`).join("")}</div>
       </div>
 
-      <div class="endnav"><a class="btn alt" href="#/muc-luc">☰ Về mục lục</a><a class="btn" href="${nextHref}">${n < 5 ? "Chương tiếp theo →" : "Kết thúc hành trình →"}</a></div>
+      <div class="panel"><div class="card req" id="req"><h3>🎯 Hoàn thành chương để mở tiếp</h3>
+        <ul class="reqlist"><li data-r="img"></li><li data-r="vocab"></li><li data-r="audio"></li></ul>
+        <div class="bar" aria-hidden="true"><i id="reqbar" style="width:0"></i></div><p class="note" id="reqmsg" style="margin:6px 0 0"></p></div></div>
+      <div class="endnav"><a class="btn alt" href="#/muc-luc">☰ Về mục lục</a><a class="btn locked" id="nextbtn" href="${nextHref}">${n < 5 ? "Chương tiếp theo →" : "Kết thúc hành trình →"}</a></div>
     </section>`;
 
     // tranh + lưu vị trí + tem
     mountViewer("cv", ch.images, S.pos[n] || 0, (i) => {
-      S.pos[n] = i; save();
-      if (i === ch.images.length - 1) award(n);
+      S.pos[n] = i; if (!P.seen[i]) P.seen[i] = true; save(); updateReq();
     });
 
     // lời
@@ -340,21 +344,43 @@
     renderText();
     $$("[data-lang]").forEach((b) => (b.onclick = () => { lang = b.dataset.lang; S.lang = lang; save(); renderText(); }));
 
+    // yêu cầu hoàn thành chương
+    function updateReq() {
+      const total = { img: ch.images.length, vocab: ch.vocab.length };
+      const ni = Object.keys(P.seen).filter((k) => P.seen[k] && +k < total.img).length, nv = Object.keys(P.vocab).filter((k) => P.vocab[k]).length;
+      const audioOk = P.audio || (badTrack.vi && badTrack.en);
+      const items = { img: [ni >= total.img, "Xem hết tranh (" + Math.min(ni, total.img) + "/" + total.img + ")"], vocab: [nv >= total.vocab, "Lật hết thẻ từ vựng (" + Math.min(nv, total.vocab) + "/" + total.vocab + ")"], audio: [audioOk, "Nghe hết một bản audio" + (audioOk && !P.audio ? " (không tải được audio – bỏ qua)" : "")] };
+      let okc = 0;
+      $$("#req [data-r]").forEach((li) => { const [ok, t] = items[li.dataset.r]; if (ok) okc++; li.className = ok ? "ok" : ""; li.textContent = (ok ? "✅ " : "⬜ ") + t; });
+      $("#reqbar").style.width = (okc / 3) * 100 + "%";
+      const all = okc === 3;
+      if (all && !S.done[n]) { S.done[n] = Date.now(); save(); toast("🏅 Hoàn thành Chương " + n + "! Bạn nhận được 1 tem."); }
+      const done = !!S.done[n];
+      const nb = $("#nextbtn"); if (nb) { nb.classList.toggle("locked", !done); nb.setAttribute("aria-disabled", String(!done)); }
+      $("#reqmsg").textContent = done ? "Đã hoàn thành! Bạn có thể sang " + (n < 5 ? "chương tiếp theo." : "phần kết thúc.") : "Hoàn thành cả 3 mục để mở " + (n < 5 ? "chương tiếp theo." : "phần kết thúc.");
+    }
+    $("#nextbtn").onclick = (e) => { if (!S.done[n]) { e.preventDefault(); toast("🔒 Bạn cần hoàn thành cả 3 mục trước nhé!"); $("#req").scrollIntoView({ behavior: "smooth", block: "center" }); } };
+
     // audio
     const play = $("#play"), seek = $("#seek"), time = $("#time"), note = $("#anote");
     const setPlayUI = (p) => { playing = p; play.innerHTML = p ? ICON.pause : ICON.play; play.setAttribute("aria-label", p ? "Tạm dừng" : "Phát"); };
     const loadTrack = (t) => {
-      track = t; stopAudio(); setPlayUI(false); note.hidden = true;
+      track = t; lastIdx = -1; stopAudio(); setPlayUI(false); note.hidden = true;
       au.src = "audio/" + t + "-" + n + ".mp3"; au.preload = "metadata"; au.playbackRate = S.speed; au.volume = S.vol;
       seek.value = 0; time.textContent = "0:00 / 0:00";
       $$("[data-track]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.track === t));
     };
     au.onloadedmetadata = () => { seek.max = au.duration || 100; time.textContent = fmt(au.currentTime) + " / " + fmt(au.duration); au.playbackRate = S.speed; };
-    au.ontimeupdate = () => { if (!dragging) seek.value = au.currentTime; time.textContent = fmt(au.currentTime) + " / " + fmt(au.duration); };
-    au.onended = () => { setPlayUI(false); seek.value = 0; };
+    au.ontimeupdate = () => {
+      if (!dragging) seek.value = au.currentTime;
+      time.textContent = fmt(au.currentTime) + " / " + fmt(au.duration);
+      if (au.duration && au.currentTime / au.duration >= 0.97 && !P.audio) { P.audio = true; save(); updateReq(); }
+      syncImage();
+    };
+    au.onended = () => { setPlayUI(false); seek.value = 0; if (!P.audio) { P.audio = true; save(); updateReq(); } };
     au.onerror = () => {
       if (!au.getAttribute("src")) return;
-      setPlayUI(false);
+      setPlayUI(false); badTrack[track] = true; updateReq();
       const lbl = track === "vi" ? "tiếng Việt" : "English";
       note.hidden = false;
       note.innerHTML = `Audio ${lbl} của chương này chưa tải được (có thể chưa có file hoặc đang mất mạng). ${ch.driveAudio[track] ? `<a href="${ch.driveAudio[track]}" target="_blank" rel="noopener">Nghe trên Google Drive ↗</a>` : ""}`;
@@ -367,10 +393,19 @@
     $("#vol").oninput = (e) => { S.vol = +e.target.value; au.volume = S.vol; save(); };
     $$("[data-speed]").forEach((b) => (b.onclick = () => { S.speed = +b.dataset.speed; au.playbackRate = S.speed; save(); $$("[data-speed]").forEach((x) => x.setAttribute("aria-pressed", x === b)); }));
     $$("[data-track]").forEach((b) => (b.onclick = () => { if (b.dataset.track !== track) loadTrack(b.dataset.track); }));
+    function syncImage() {
+      const pts = ch.sync && ch.sync[track];
+      if (!pts || !S.autoSync || !curViewer || (au.paused && au.currentTime < 0.2)) return;
+      let idx = 0; for (const pt of pts) { if (au.currentTime >= pt[0]) idx = pt[1]; else break; }
+      if (idx !== lastIdx) { lastIdx = idx; curViewer.set(idx); }
+    }
+    const as = $("#autosync"); if (as) as.onchange = () => { S.autoSync = as.checked; save(); lastIdx = -1; };
     loadTrack("vi");
+    updateReq();
 
     // từ vựng
-    $$(".vcard").forEach((b) => (b.onclick = () => b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") !== "true")));
+    $$(".vcard").forEach((b) => (b.onclick = () => { b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") !== "true"); if (!P.vocab[b.dataset.k]) { P.vocab[b.dataset.k] = true; save(); updateReq(); } }));
+    $$(".vcard").forEach((b) => { if (P.vocab[b.dataset.k]) b.setAttribute("aria-pressed", "true"); });
     const canSay = "speechSynthesis" in window;
     $$(".say-w").forEach((b) => { if (!canSay) { b.hidden = true; return; } b.onclick = () => { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(b.dataset.w); u.lang = "en-US"; u.rate = 0.85; speechSynthesis.speak(u); } catch (e) {} }; });
 
@@ -513,8 +548,8 @@
     const icons = ["🏛️", "🗺️", "📸", "🍜", "🚇"];
     const n = stampCount();
     main.innerHTML = `<section class="view stack">
-      <div class="title-wrap"><span class="kicker">Hộ chiếu khám phá</span><h1>Bạn đã thu thập ${n}/5 tem</h1><p class="note">Đọc đến tranh cuối của mỗi chương để nhận tem. Không cần nhập tên!</p></div>
-      <div class="stamps">${D.chapters.map((c, i) => `<div class="stamp ${S.stamps[c.id] ? "got" : ""}"><div class="ic" aria-hidden="true">${icons[i]}</div><b>Chương ${c.id}</b><small>${esc(c.vi)}</small><br><small>${S.stamps[c.id] ? "✓ Đã nhận" : "Chưa nhận"}</small></div>`).join("")}</div>
+      <div class="title-wrap"><span class="kicker">Hộ chiếu khám phá</span><h1>Bạn đã thu thập ${n}/5 tem</h1><p class="note">Xem hết tranh, lật hết từ vựng và nghe hết audio của một chương để nhận tem. Không cần nhập tên!</p></div>
+      <div class="stamps">${D.chapters.map((c, i) => `<div class="stamp ${S.done[c.id] ? "got" : ""}"><div class="ic" aria-hidden="true">${icons[i]}</div><b>Chương ${c.id}</b><small>${esc(c.vi)}</small><br><small>${S.done[c.id] ? "✓ Đã nhận" : "Chưa nhận"}</small></div>`).join("")}</div>
       <div class="card badge"><div class="medal ${medal ? medal.badge : ""}" aria-hidden="true">${medal ? (medal.badge === "gold" ? "🥇" : medal.badge === "silver" ? "🥈" : "🥉") : "❔"}</div>
         <div>${medal ? `<b>${esc(medal.title)}</b><br>Thành tích tốt nhất: ${S.best}/10 · Đã chơi ${S.plays} lần` : `<b>Chưa có huy hiệu</b><br>Hoàn thành thử thách để nhận huy hiệu nhé!`}</div></div>
       ${n === 5 ? '<div class="card" style="background:var(--leaf-l)"><b>🎉 Bạn đã đủ 5 tem! Nhà khám phá TP.HCM thực thụ.</b></div>' : ""}
@@ -569,6 +604,8 @@
       case "ho-chieu": name = "passport"; break;
       default: name = "home";
     }
+    if (name === "chapter" && arg >= 1 && arg <= 5 && !canOpen(arg)) { const f = firstOpen(); toast("🔒 Hãy hoàn thành Chương " + f + " trước nhé!"); location.replace("#/chuong/" + f); return; }
+    if (name === "end" && !S.done[5]) { const f = firstOpen(); toast("🔒 Hãy hoàn thành Chương " + f + " trước nhé!"); location.replace("#/chuong/" + f); return; }
     views[name](arg);
     const ch = name === "chapter" && D.chapters.find((c) => c.id === arg);
     document.title = (ch ? "Chương " + arg + ": " + ch.vi : titles[name]) + (name === "home" ? "" : " – Bồ Câu & Sóc Nâu");
