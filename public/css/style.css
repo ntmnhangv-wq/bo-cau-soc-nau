@@ -277,3 +277,21 @@ label.sync input{width:22px;height:22px;accent-color:var(--coral)}
 .readprog i{display:block;height:100%;width:0;background:var(--coral,#ff6b5b)}
 
 .ver{margin-top:6px;font-size:.8rem;opacity:.7}
+
+/* thanh điều khiển trên tranh */
+.stage .readbtn{left:50%;transform:translateX(-50%);bottom:76px;white-space:nowrap}
+.stage .readbtn:active{transform:translateX(-50%) translateY(2px)}
+.pbar{position:absolute;left:0;right:0;bottom:0;z-index:4;padding:22px 10px 6px;background:linear-gradient(transparent,rgba(20,25,40,.82));color:#fff}
+.pbar #seek{width:100%;height:22px;margin:0;accent-color:var(--coral,#ff6b5b);display:block}
+.pbar .prow{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
+.pbar .sp{flex:1}
+.pbar .pb{background:none;border:0;color:#fff;min-width:40px;height:40px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font:800 .85rem/1 "Nunito",system-ui,sans-serif;padding:0 6px}
+.pbar .pb svg{width:24px;height:24px;fill:currentColor}
+.pbar .pb:hover,.pbar .pb:focus-visible{background:rgba(255,255,255,.2)}
+.pbar .pb.txt{background:rgba(255,255,255,.18);padding:0 10px;height:34px}
+.pbar #autosync[aria-pressed="false"]{opacity:.55;text-decoration:line-through}
+.pbar .ptime{font:700 .8rem/1 "Nunito",system-ui,sans-serif;white-space:nowrap}
+.pbar .vol input{width:0;opacity:0;transition:width .2s;accent-color:#fff;margin:0}
+.pbar .vol:hover input,.pbar .vol:focus-within input{width:70px;opacity:1}
+@media (max-width:480px){.pbar .vol input{display:none}.pbar .pb.txt{padding:0 8px;font-size:.78rem}.pbar .ptime{font-size:.72rem}}
+@media (max-width:480px){.pbar .atx{display:none}.pbar .prow{gap:2px}}

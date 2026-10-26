@@ -65,7 +65,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "5", date: "26/10/2026", note: "Nút đọc trên tranh, ảnh tự chuyển theo lời đọc" };
+  const APP_VERSION = { v: "6", date: "26/10/2026", note: "Thanh điều khiển audio ngay trên tranh" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- bộ xem tranh ---------- */
@@ -305,23 +305,7 @@
         <details class="full" id="full"><summary>Đọc lời đầy đủ của chương</summary><div id="fulltxt"></div></details>
       </div>
 
-      <div class="panel"><h2>🎧 Nghe audio</h2>
-        <div class="audio">
-          <div class="seg" role="group" aria-label="Chọn giọng audio" style="margin-bottom:12px">
-            <button type="button" data-track="vi" aria-pressed="true">Việt</button><button type="button" data-track="en" aria-pressed="false">English</button></div>
-          <div class="aud-row">
-            <button class="play" id="play" type="button" aria-label="Phát">${ICON.play}</button>
-            <div class="seek"><input id="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Thanh tua audio"></div>
-            <span class="time" id="time">0:00 / 0:00</span>
-          </div>
-          <div class="aud-opts">
-            <label class="vol">${ICON.vol}<span class="sr">Âm lượng</span><input id="vol" type="range" min="0" max="1" step="0.05" value="${S.vol}"></label>
-            <div class="seg speed" role="group" aria-label="Tốc độ">${[0.75, 1, 1.25, 1.5].map((v) => `<button type="button" data-speed="${v}" aria-pressed="${S.speed === v}">${v}×</button>`).join("")}</div>
-          </div>
-          ${ch.sync ? `<label class="sync"><input type="checkbox" id="autosync" ${S.autoSync ? "checked" : ""}> Tranh tự chuyển theo lời đọc</label>` : ""}
-          <p class="note warn" id="anote" hidden></p>
-        </div>
-      </div>
+      <p class="note warn" id="anote" hidden></p>
 
       <div class="panel"><h2>🔤 Từ vựng Anh–Việt</h2>
         <p class="note" style="margin-top:-6px">Chạm vào thẻ để xem nghĩa tiếng Việt. Bấm loa để nghe phát âm.</p>
@@ -366,22 +350,35 @@
     $("#nextbtn").onclick = (e) => { if (!S.done[n]) { e.preventDefault(); toast("🔒 Bạn cần hoàn thành cả 3 mục trước nhé!"); $("#req").scrollIntoView({ behavior: "smooth", block: "center" }); } };
 
     // audio
-    const play = $("#play"), seek = $("#seek"), time = $("#time"), note = $("#anote");
-    // nút đọc ngay trên tranh
+    const note = $("#anote");
+    // thanh điều khiển ngay trên tranh (giống YouTube)
     const stageEl = $("#cv .stage");
-    stageEl.insertAdjacentHTML("beforeend", `<button class="readbtn" id="readbtn" type="button"></button><div class="readprog" aria-hidden="true"><i id="readbar"></i></div>`);
-    const rb = $("#readbtn");
+    stageEl.insertAdjacentHTML("beforeend", `<button class="readbtn" id="readbtn" type="button">🔊 Đọc cho mình nghe</button>
+      <div class="pbar" id="pbar">
+        <input id="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Thanh tua audio">
+        <div class="prow">
+          <button class="pb" id="play" type="button" aria-label="Phát">${ICON.play}</button>
+          <span class="ptime" id="time">0:00 / 0:00</span>
+          <span class="sp"></span>
+          <label class="pb vol" title="Âm lượng">${ICON.vol}<span class="sr">Âm lượng</span><input id="vol" type="range" min="0" max="1" step="0.05" value="${S.vol}"></label>
+          <button class="pb txt" id="spd" type="button" aria-label="Tốc độ đọc" title="Tốc độ đọc">${S.speed}×</button>
+          <button class="pb txt" id="trk" type="button" aria-label="Đổi giọng đọc" title="Giọng đọc">Việt</button>
+          ${ch.sync ? `<button class="pb txt" id="autosync" type="button" aria-pressed="${S.autoSync}" title="Tranh tự chuyển theo lời đọc">🖼<span class="atx"> Tự chuyển</span></button>` : ""}
+        </div>
+      </div>`);
+    ["pointerdown", "pointerup", "click"].forEach((ev) => $("#pbar").addEventListener(ev, (e) => e.stopPropagation()));
+    const rb = $("#readbtn"), play = $("#play"), seek = $("#seek"), time = $("#time");
     const setPlayUI = (p) => {
-      playing = p; play.innerHTML = p ? ICON.pause : ICON.play; play.setAttribute("aria-label", p ? "Tạm dừng" : "Phát");
-      rb.innerHTML = p ? "⏸ Tạm dừng" : "🔊 Đọc cho mình nghe"; rb.setAttribute("aria-pressed", String(p)); rb.classList.toggle("on", p);
-      if (p) rafLoop(); 
+      playing = p; $("#play").innerHTML = p ? ICON.pause : ICON.play; $("#play").setAttribute("aria-label", p ? "Tạm dừng" : "Phát");
+      rb.hidden = p;
+      if (p) rafLoop();
     };
-    const rafLoop = () => { if (!playing) return; syncImage(); const b = $("#readbar"); if (b && au.duration) b.style.width = (au.currentTime / au.duration) * 100 + "%"; requestAnimationFrame(rafLoop); };
+    const rafLoop = () => { if (!playing) return; syncImage(); requestAnimationFrame(rafLoop); };
     const loadTrack = (t) => {
       track = t; lastIdx = -1; stopAudio(); setPlayUI(false); note.hidden = true;
       au.src = "audio/" + t + "-" + n + ".mp3"; au.preload = "metadata"; au.playbackRate = S.speed; au.volume = S.vol;
       seek.value = 0; time.textContent = "0:00 / 0:00";
-      $$("[data-track]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.track === t));
+      $("#trk").textContent = t === "vi" ? "Việt" : "English";
     };
     au.onloadedmetadata = () => { seek.max = au.duration || 100; time.textContent = fmt(au.currentTime) + " / " + fmt(au.duration); au.playbackRate = S.speed; };
     au.ontimeupdate = () => {
@@ -407,15 +404,16 @@
     seek.oninput = () => { dragging = true; time.textContent = fmt(seek.value) + " / " + fmt(au.duration); };
     seek.onchange = () => { au.currentTime = +seek.value; dragging = false; };
     $("#vol").oninput = (e) => { S.vol = +e.target.value; au.volume = S.vol; save(); };
-    $$("[data-speed]").forEach((b) => (b.onclick = () => { S.speed = +b.dataset.speed; au.playbackRate = S.speed; save(); $$("[data-speed]").forEach((x) => x.setAttribute("aria-pressed", x === b)); }));
-    $$("[data-track]").forEach((b) => (b.onclick = () => { if (b.dataset.track !== track) loadTrack(b.dataset.track); }));
+    const SPEEDS = [0.75, 1, 1.25, 1.5];
+    $("#spd").onclick = () => { S.speed = SPEEDS[(SPEEDS.indexOf(S.speed) + 1) % SPEEDS.length]; au.playbackRate = S.speed; $("#spd").textContent = S.speed + "×"; save(); };
+    $("#trk").onclick = () => { const t = track === "vi" ? "en" : "vi"; const was = !au.paused; loadTrack(t); if (was) au.play().catch(() => {}); };
     function syncImage() {
       const pts = ch.sync && ch.sync[track];
       if (!pts || !S.autoSync || !curViewer || (au.paused && au.currentTime < 0.05)) return;
       let idx = 0; for (const pt of pts) { if (au.currentTime >= pt[0]) idx = pt[1]; else break; }
       if (idx !== lastIdx) { lastIdx = idx; curViewer.set(idx); }
     }
-    const as = $("#autosync"); if (as) as.onchange = () => { S.autoSync = as.checked; save(); lastIdx = -1; };
+    const as = $("#autosync"); if (as) as.onclick = () => { S.autoSync = !S.autoSync; as.setAttribute("aria-pressed", String(S.autoSync)); save(); lastIdx = -1; };
     loadTrack("vi");
     updateReq();
 
