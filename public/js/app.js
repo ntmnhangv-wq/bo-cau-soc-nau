@@ -65,7 +65,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "8", date: "26/10/2026", note: "Tiến độ trên thẻ chương, chữ lời thoại to hơn, hiệu ứng, nền tối, nút bấm lớn hơn" };
+  const APP_VERSION = { v: "9", date: "26/10/2026", note: "Viết đầy đủ TP. Hồ Chí Minh, bỏ viền đỏ ở cuối trang" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -599,7 +599,7 @@
       <div class="stamps">${D.chapters.map((c, i) => `<div class="stamp ${S.done[c.id] ? "got" : ""}"><div class="ic" aria-hidden="true">${icons[i]}</div><b>Chương ${c.id}</b><small>${esc(c.vi)}</small><br><small>${S.done[c.id] ? "✓ Đã nhận" : "Chưa nhận"}</small></div>`).join("")}</div>
       <div class="card badge"><div class="medal ${medal ? medal.badge : ""}" aria-hidden="true">${medal ? (medal.badge === "gold" ? "🥇" : medal.badge === "silver" ? "🥈" : "🥉") : "❔"}</div>
         <div>${medal ? `<b>${esc(medal.title)}</b><br>Thành tích tốt nhất: ${S.best}/10 · Đã chơi ${S.plays} lần` : `<b>Chưa có huy hiệu</b><br>Hoàn thành thử thách để nhận huy hiệu nhé!`}</div></div>
-      ${n === 5 ? '<div class="card" style="background:var(--leaf-l)"><b>🎉 Bạn đã đủ 5 tem! Nhà khám phá TP.HCM thực thụ.</b></div>' : ""}
+      ${n === 5 ? '<div class="card" style="background:var(--leaf-l)"><b>🎉 Bạn đã đủ 5 tem! Nhà khám phá TP. Hồ Chí Minh thực thụ.</b></div>' : ""}
       <div class="card"><h3>📲 Dùng không cần mạng</h3>
         <p class="note" style="margin-top:0">Tải trước audio để nghe offline trong lớp học hoặc trên xe.</p>
         <div class="row"><button class="btn sm" id="dl" type="button">⬇ Tải audio về máy</button><button class="btn sm alt" id="inst" type="button" hidden>Cài app lên màn hình</button></div>
@@ -631,7 +631,7 @@
   }
 
   /* ---------- bộ định tuyến ---------- */
-  const titles = { home: "Bồ Câu & Sóc Nâu – TP.HCM, thành phố tôi yêu", toc: "Mục lục", meet: "Làm quen", book: "Đọc toàn bộ truyện", end: "Hẹn gặp lại", quiz: "Thử thách", result: "Kết quả", about: "Giới thiệu", passport: "Hộ chiếu khám phá" };
+  const titles = { home: "Bồ Câu & Sóc Nâu – TP. Hồ Chí Minh, thành phố tôi yêu", toc: "Mục lục", meet: "Làm quen", book: "Đọc toàn bộ truyện", end: "Hẹn gặp lại", quiz: "Thử thách", result: "Kết quả", about: "Giới thiệu", passport: "Hộ chiếu khám phá" };
   function route() {
     if (cleanup) { cleanup(); cleanup = null; }
     stopAudio(); lbClose(); curViewer = null;

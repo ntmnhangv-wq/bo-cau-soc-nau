@@ -352,3 +352,6 @@ body.noscroll{overflow:hidden}
 :root[data-theme=dark] :is(.en,.e,.en-title,.pair small,.chhead .e,.l2,.title-wrap .en){color:#7cc4e6}
 :root[data-theme=dark] :is(.view p,.note){color:var(--ink-soft)}
 :root[data-theme=dark] .footer,:root[data-theme=dark] footer{color:var(--ink-soft)}
+
+/* v9: bỏ viền đỏ khi vùng nội dung được focus tự động */
+main:focus,main:focus-visible,#main:focus{outline:none}
