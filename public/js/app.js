@@ -65,7 +65,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "6", date: "26/10/2026", note: "Thanh điều khiển audio ngay trên tranh" };
+  const APP_VERSION = { v: "7", date: "26/10/2026", note: "Thanh điều khiển tự ẩn, xem toàn màn hình, thống nhất màu" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- bộ xem tranh ---------- */
@@ -364,13 +364,31 @@
           <button class="pb txt" id="spd" type="button" aria-label="Tốc độ đọc" title="Tốc độ đọc">${S.speed}×</button>
           <button class="pb txt" id="trk" type="button" aria-label="Đổi giọng đọc" title="Giọng đọc">Việt</button>
           ${ch.sync ? `<button class="pb txt" id="autosync" type="button" aria-pressed="${S.autoSync}" title="Tranh tự chuyển theo lời đọc">🖼<span class="atx"> Tự chuyển</span></button>` : ""}
+          <button class="pb" id="fsbtn" type="button" aria-label="Xem toàn màn hình" title="Toàn màn hình">⛶</button>
         </div>
       </div>`);
     ["pointerdown", "pointerup", "click"].forEach((ev) => $("#pbar").addEventListener(ev, (e) => e.stopPropagation()));
+    // tự ẩn thanh điều khiển khi đang đọc; chạm vào tranh để hiện lại
+    let hideT = null;
+    const showBar = () => { stageEl.classList.remove("idle"); clearTimeout(hideT); if (playing) hideT = setTimeout(() => stageEl.classList.add("idle"), 3000); };
+    let wasIdle = false;
+    stageEl.addEventListener("pointerdown", () => { wasIdle = stageEl.classList.contains("idle"); }, true);
+    ["pointermove", "pointerdown", "focusin", "keydown"].forEach((ev) => stageEl.addEventListener(ev, showBar));
+    stageEl.addEventListener("click", (e) => { if (wasIdle) { wasIdle = false; e.stopPropagation(); e.preventDefault(); showBar(); } }, true);
+    // toàn màn hình
+    const setFs = (on) => {
+      stageEl.classList.toggle("fs", on); document.body.classList.toggle("noscroll", on);
+      $("#fsbtn").textContent = on ? "✕" : "⛶"; $("#fsbtn").setAttribute("aria-label", on ? "Thoát toàn màn hình" : "Xem toàn màn hình");
+      try { if (on && stageEl.requestFullscreen) stageEl.requestFullscreen().catch(() => {}); else if (!on && document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
+    };
+    $("#fsbtn").onclick = () => setFs(!stageEl.classList.contains("fs"));
+    document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && stageEl.classList.contains("fs")) setFs(false); });
+    document.addEventListener("keydown", fsKey);
+    function fsKey(e) { if (e.key === "Escape" && stageEl.classList.contains("fs")) setFs(false); }
     const rb = $("#readbtn"), play = $("#play"), seek = $("#seek"), time = $("#time");
     const setPlayUI = (p) => {
       playing = p; $("#play").innerHTML = p ? ICON.pause : ICON.play; $("#play").setAttribute("aria-label", p ? "Tạm dừng" : "Phát");
-      rb.hidden = p;
+      rb.hidden = p; showBar();
       if (p) rafLoop();
     };
     const rafLoop = () => { if (!playing) return; syncImage(); requestAnimationFrame(rafLoop); };
@@ -423,7 +441,7 @@
     const canSay = "speechSynthesis" in window;
     $$(".say-w").forEach((b) => { if (!canSay) { b.hidden = true; return; } b.onclick = () => { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(b.dataset.w); u.lang = "en-US"; u.rate = 0.85; speechSynthesis.speak(u); } catch (e) {} }; });
 
-    cleanup = () => { try { speechSynthesis.cancel(); } catch (e) {} };
+    cleanup = () => { try { speechSynthesis.cancel(); } catch (e) {} document.removeEventListener("keydown", fsKey); document.body.classList.remove("noscroll"); try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {} clearTimeout(hideT); };
   };
 
   /* Đọc toàn bộ truyện */

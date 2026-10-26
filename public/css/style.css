@@ -295,3 +295,17 @@ label.sync input{width:22px;height:22px;accent-color:var(--coral)}
 .pbar .vol:hover input,.pbar .vol:focus-within input{width:70px;opacity:1}
 @media (max-width:480px){.pbar .vol input{display:none}.pbar .pb.txt{padding:0 8px;font-size:.78rem}.pbar .ptime{font-size:.72rem}}
 @media (max-width:480px){.pbar .atx{display:none}.pbar .prow{gap:2px}}
+
+/* v7: tự ẩn thanh, toàn màn hình, màu thống nhất */
+.pbar{transition:opacity .25s,transform .25s}
+.stage.idle .pbar{opacity:0;transform:translateY(8px);pointer-events:none}
+.stage.idle{cursor:none}
+.readbtn{border-color:var(--line);box-shadow:0 3px 0 var(--line);color:var(--ink)}
+.readbtn.on,.readbtn:hover{background:var(--sun)}
+.pbar #seek{accent-color:var(--sun)}
+.pbar .pb.txt[aria-pressed="true"]{background:var(--sun);color:var(--ink)}
+body.noscroll{overflow:hidden}
+.stage.fs{position:fixed;inset:0;z-index:100;border:0;border-radius:0;background:#111;box-shadow:none;display:flex;align-items:center;justify-content:center}
+.stage.fs img{width:auto;height:auto;max-width:100%;max-height:100dvh;object-fit:contain;background:transparent;cursor:default}
+.stage.fs .pbar{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+.stage.fs .readbtn{bottom:90px}
