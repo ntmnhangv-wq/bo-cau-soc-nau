@@ -275,3 +275,5 @@ label.sync input{width:22px;height:22px;accent-color:var(--coral)}
 .readbtn:active{transform:translateY(2px);box-shadow:none}
 .readprog{position:absolute;left:0;right:0;bottom:0;height:6px;background:rgba(0,0,0,.12);z-index:3}
 .readprog i{display:block;height:100%;width:0;background:var(--coral,#ff6b5b)}
+
+.ver{margin-top:6px;font-size:.8rem;opacity:.7}

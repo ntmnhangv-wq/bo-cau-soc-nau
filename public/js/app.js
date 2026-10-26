@@ -64,6 +64,10 @@
   $("#lb-img").onclick = () => { LB.zoom = !LB.zoom; lbShow(); };
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
+  /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
+  const APP_VERSION = { v: "5", date: "26/10/2026", note: "Nút đọc trên tranh, ảnh tự chuyển theo lời đọc" };
+  (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
+
   /* ---------- bộ xem tranh ---------- */
   let curViewer = null;
   function viewerHTML(id) {
