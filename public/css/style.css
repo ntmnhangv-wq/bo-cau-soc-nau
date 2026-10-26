@@ -246,3 +246,12 @@ input[type=range]{width:100%;accent-color:var(--coral);height:30px;margin:0}
 .poster-d img{margin:10px auto;max-width:460px;border:3px solid var(--line);border-radius:14px}
 
 footer{max-width:1000px;margin:0 auto;padding:0 14px 30px;text-align:center;color:var(--ink-soft);font-size:.9rem}
+
+/* đánh giá sao */
+.rate{text-align:center}
+.stars-in{display:flex;justify-content:center;gap:4px;margin:4px 0}
+.star{border:0;background:transparent;font-size:2.6rem;line-height:1;color:#c9d3da;padding:2px 6px;min-width:48px;min-height:48px;transition:transform .12s,color .12s;-webkit-text-stroke:2px var(--line)}
+.star.on{color:var(--sun)}
+.star:hover{transform:scale(1.15)}
+.rate-msg{font-weight:700;min-height:1.5em;margin:2px 0}
+.rate-sum{margin:0}
