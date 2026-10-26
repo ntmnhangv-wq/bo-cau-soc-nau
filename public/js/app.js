@@ -66,7 +66,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "10", date: "26/10/2026", note: "XP và cấp độ, bản đồ hành trình, quiz có chuỗi và đếm giờ, xếp hạng lớp, ảnh thành tích" };
+  const APP_VERSION = { v: "11", date: "26/10/2026", note: "Đổi tên điểm trên bản đồ hành trình" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -312,8 +312,8 @@
   }
   /* bản đồ hành trình */
   function mapHTML() {
-    const pts = [[56, 236], [150, 190], [96, 124], [212, 98], [296, 48]];
-    const icons = ["🏛️", "🗺️", "📸", "🍜", "🚇"], names = ["Gia Định", "Vị trí", "Điểm đến", "Ẩm thực", "Giao thông"];
+    const pts = [[60, 224], [150, 190], [96, 124], [212, 98], [296, 48]];
+    const icons = ["🏛️", "🗺️", "📸", "🍜", "🚇"], names = [["Lịch sử", "hình thành"], ["Vị trí địa lí"], ["Điểm du lịch"], ["Ẩm thực"], ["Giao thông"]];
     const cur = firstOpen(), allDone = !!S.done[5];
     const seg = (i) => { // đoạn cong từ điểm i tới i+1 (Catmull-Rom)
       const p0 = pts[Math.max(i - 1, 0)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(i + 2, 4)];
@@ -324,7 +324,7 @@
     const nodes = D.chapters.map((c, i) => {
       const [x, y] = pts[i], open = canOpen(c.id), done = !!S.done[c.id], isCur = !allDone && c.id === cur;
       const st = done ? "done" : open ? "cur" : "lock";
-      const inner = `<circle class="halo" cx="${x}" cy="${y}" r="26"/><circle class="dot" cx="${x}" cy="${y}" r="22"/><text class="ico" x="${x}" y="${y + 8}" text-anchor="middle">${open ? icons[i] : "🔒"}</text>${done ? `<circle class="tick" cx="${x + 17}" cy="${y - 17}" r="9"/><text class="tk" x="${x + 17}" y="${y - 13}" text-anchor="middle">✓</text>` : ""}<text class="lab" x="${x}" y="${y + 42}" text-anchor="middle">${names[i]}</text>`;
+      const inner = `<circle class="halo" cx="${x}" cy="${y}" r="26"/><circle class="dot" cx="${x}" cy="${y}" r="22"/><text class="ico" x="${x}" y="${y + 8}" text-anchor="middle">${open ? icons[i] : "🔒"}</text>${done ? `<circle class="tick" cx="${x + 17}" cy="${y - 17}" r="9"/><text class="tk" x="${x + 17}" y="${y - 13}" text-anchor="middle">✓</text>` : ""}<text class="lab" x="${x}" y="${y + 41}" text-anchor="middle">${names[i].map((t, k) => `<tspan x="${x}" dy="${k ? 13 : 0}">${t}</tspan>`).join("")}</text>`;
       const av = isCur ? `<image href="${SOC}" x="${x - 34}" y="${y - 52}" width="28" height="28" clip-path="circle(14px at 14px 14px)" class="avmap"/>` : "";
       return open ? `<a href="#/chuong/${c.id}" class="mnode ${st}${isCur ? " here" : ""}" aria-label="Chương ${c.id}: ${esc(c.vi)}${done ? " – đã hoàn thành" : isCur ? " – đang học" : ""}">${inner}${av}</a>` : `<g class="mnode ${st}" aria-label="Chương ${c.id} chưa mở">${inner}</g>`;
     }).join("");
