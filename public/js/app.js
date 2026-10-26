@@ -65,8 +65,16 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "7", date: "26/10/2026", note: "Thanh điều khiển tự ẩn, xem toàn màn hình, thống nhất màu" };
+  const APP_VERSION = { v: "8", date: "26/10/2026", note: "Tiến độ trên thẻ chương, chữ lời thoại to hơn, hiệu ứng, nền tối, nút bấm lớn hơn" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
+
+  /* ---------- nền tối / sáng ---------- */
+  const THEME_KEY = "bcsn.theme";
+  const getTheme = () => { try { const t = localStorage.getItem(THEME_KEY); if (t) return t; } catch (e) {} return window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; };
+  const applyTheme = (t) => { document.documentElement.dataset.theme = t; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === "dark" ? "#141c2b" : "#f7b731"; const b = document.getElementById("themebtn"); if (b) b.textContent = t === "dark" ? "☀️ Nền sáng" : "🌙 Nền tối"; };
+  (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div><button class="themebtn" id="themebtn" type="button"></button></div>`);
+    applyTheme(getTheme());
+    document.getElementById("themebtn").onclick = () => { const t = getTheme() === "dark" ? "light" : "dark"; try { localStorage.setItem(THEME_KEY, t); } catch (e) {} applyTheme(t); }; })();
 
   /* ---------- bộ xem tranh ---------- */
   let curViewer = null;
@@ -89,7 +97,7 @@
     dots.innerHTML = items.length > 1 && items.length <= 8 ? items.map(() => "<i></i>").join("") : "";
     function render() {
       const it = items[i];
-      img.src = it.src; img.alt = it.alt;
+      img.src = it.src; img.alt = it.alt; img.classList.remove("fade"); void img.offsetWidth; img.classList.add("fade");
       ind.textContent = (i + 1) + "/" + items.length;
       lab.textContent = it.label || "";
       prev.disabled = i === 0; next.disabled = i === items.length - 1;
@@ -257,12 +265,19 @@
   };
 
   /* Trang 2 – Mục lục */
+  function chProg(c) {
+    const P = S.prog[c.id]; if (S.done[c.id] || !P) return "";
+    const ni = Object.keys(P.seen || {}).filter((k) => P.seen[k]).length, nv = Object.keys(P.vocab || {}).filter((k) => P.vocab[k]).length;
+    const parts = Math.min(ni / c.images.length, 1) + Math.min(nv / c.vocab.length, 1) + (P.audio ? 1 : 0);
+    if (!parts) return "";
+    return `<div class="cprog" role="img" aria-label="Đã học ${Math.round(parts / 3 * 100)}%"><span class="bar"><i style="width:${(parts / 3 * 100).toFixed(0)}%"></i></span><small>Đang học dở · ${(parts / 3 * 100).toFixed(0)}%</small></div>`;
+  }
   views.toc = () => {
     main.innerHTML = `<section class="view">
       <div class="title-wrap"><h1>Hôm nay, mình đi đâu?</h1><p class="en" lang="en" style="font-weight:700">Where shall we go today?</p></div>
       <ol class="toc">${D.chapters.map((c) => { const open = canOpen(c.id); const tag = open ? "a" : "div"; return `<li><${tag} class="chcard${open ? "" : " locked"}" ${open ? `href="#/chuong/${c.id}"` : 'aria-disabled="true"'}>
         <div class="pic"><img src="${c.thumb}" alt="" loading="lazy"><span class="num">Chương ${c.id}</span>${S.done[c.id] ? '<span class="done">✓ Hoàn thành</span>' : !open ? '<span class="lock">🔒</span>' : ""}</div>
-        <div class="bd"><h3>${esc(c.vi)}</h3><p class="e en" lang="en">${esc(c.en)}</p><p>${open ? esc(c.desc) : "Hoàn thành Chương " + (c.id - 1) + " để mở chương này."}</p></div></${tag}></li>`; }).join("")}</ol>
+        <div class="bd">${chProg(c)}<h3>${esc(c.vi)}</h3><p class="e en" lang="en">${esc(c.en)}</p><p>${open ? esc(c.desc) : "Hoàn thành Chương " + (c.id - 1) + " để mở chương này."}</p></div></${tag}></li>`; }).join("")}</ol>
       <div class="minor"><div class="row c">
         <a class="btn alt sm" href="#/lam-quen">👋 Làm quen Bồ Câu và Sóc Nâu</a>
         <a class="btn alt sm" href="#/doc-truyen">📖 Đọc toàn bộ truyện</a>

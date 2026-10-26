@@ -309,3 +309,46 @@ body.noscroll{overflow:hidden}
 .stage.fs img{width:auto;height:auto;max-width:100%;max-height:100dvh;object-fit:contain;background:transparent;cursor:default}
 .stage.fs .pbar{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
 .stage.fs .readbtn{bottom:90px}
+
+/* ===== v8: nhóm 2 + 3 ===== */
+/* chữ lời thoại to, dễ đọc */
+.say .bubble{font-size:1.15rem;line-height:1.65}
+.say .bubble .l2{font-size:1.05rem}
+.bi-para,.full p{font-size:1.1rem;line-height:1.75}
+/* tiến độ trên thẻ chương */
+.cprog{margin:0 0 8px}.cprog .bar{display:block;height:10px;border:2.5px solid var(--line);border-radius:999px;background:#fff;overflow:hidden}
+.cprog .bar i{display:block;height:100%;background:var(--leaf);border-radius:999px;transition:width .4s}
+.cprog small{font-weight:700;color:var(--ink-soft)}
+/* hiệu ứng */
+@keyframes fadein{from{opacity:.0;transform:scale(.985)}to{opacity:1;transform:none}}
+.stage img.fade{animation:fadein .28s ease-out}
+@keyframes flipin{from{transform:rotateY(90deg);opacity:0}to{transform:none;opacity:1}}
+.vcard[aria-pressed=true] .m{animation:flipin .3s ease-out}
+@keyframes pop{0%{transform:scale(.4) rotate(-12deg)}60%{transform:scale(1.2) rotate(4deg)}100%{transform:none}}
+.chcard .done,.chcard .num{animation:pop .5s ease-out}
+.toast.on{animation:pop .45s ease-out}
+/* nút đủ lớn cho ngón tay */
+.btn.sm,.navbtn{min-height:44px}
+.say-w{width:44px;height:44px;right:2px;top:2px;border:0;background:transparent}
+.say-w svg{width:20px;height:20px}
+.pbar #seek{height:28px}
+.themebtn{margin-top:8px;border:2px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;min-height:44px;padding:6px 16px;font:700 .95rem var(--f-body);cursor:pointer}
+/* nền tối */
+:root[data-theme=dark]{--ink:#e9eff6;--ink-soft:#a9b8c8;--paper:#1a2333;--sky:#121a29;--sky-d:#22304a;--card:#1e293b;--line:#05080f;--leaf-l:#17402b;--coral-l:#4a2320;color-scheme:dark}
+:root[data-theme=dark] body{background:#121a29;background-image:none}
+:root[data-theme=dark] .topbar,:root[data-theme=dark] header.topbar{background:#1a2333}
+:root[data-theme=dark] :is(.chcard,.btn.alt,.navbtn,.vcard,.bubble,.card,.panel,.themebtn,.seg button,.cprog .bar,.dots i,.lock,.stage,.full,details){background-color:var(--card);color:var(--ink)}
+:root[data-theme=dark] .bubble.soc{background-color:#4a3d1c}
+:root[data-theme=dark] .bubble.bc{background-color:#1f3550}
+:root[data-theme=dark] .vcard[aria-pressed=true]{background-color:var(--leaf-l)}
+:root[data-theme=dark] .chcard .e,.bubble .l2,:root[data-theme=dark] .say .bubble .l2{color:#7cc4e6}
+:root[data-theme=dark] .btn:not(.alt):not(.locked){color:#1b2433}
+:root[data-theme=dark] .btn.coral,:root[data-theme=dark] .btn.leaf{color:#fff}
+:root[data-theme=dark] .seg button[aria-pressed=true],:root[data-theme=dark] .navbtn:hover{background-color:var(--sun);color:#1b2433}
+:root[data-theme=dark] .stage img{background:#0b1020}
+:root[data-theme=dark] .dots i.on{background-color:var(--coral)}
+.vgrid>div>.vcard{width:100%;height:100%}
+:root[data-theme=dark] :is(h1,h2,h3,.vi-title,.title-wrap h1){color:var(--ink)}
+:root[data-theme=dark] :is(.en,.e,.en-title,.pair small,.chhead .e,.l2,.title-wrap .en){color:#7cc4e6}
+:root[data-theme=dark] :is(.view p,.note){color:var(--ink-soft)}
+:root[data-theme=dark] .footer,:root[data-theme=dark] footer{color:var(--ink-soft)}
