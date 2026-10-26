@@ -111,7 +111,7 @@ main{max-width:1000px;margin:0 auto;padding:18px 14px 70px;outline:none}
 
 /* viewer */
 .viewer{max-width:620px;margin:0 auto}
-.stage{position:relative;border:4px solid var(--line);border-radius:20px;background:#fff;box-shadow:var(--shadow);overflow:hidden;touch-action:pan-y}
+.stage{perspective:1600px;position:relative;border:4px solid var(--line);border-radius:20px;background:#fff;box-shadow:var(--shadow);overflow:hidden;touch-action:pan-y}
 .stage img{width:100%;height:auto;cursor:zoom-in;background:#f2f2f2}
 .vctl{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;flex-wrap:wrap}
 .vctl .ind{font-family:var(--f-head);font-weight:800;font-size:1.15rem;background:#fff;border:2.5px solid var(--line);border-radius:999px;padding:0 16px;min-width:76px;text-align:center}
@@ -469,3 +469,11 @@ main:focus,main:focus-visible,#main:focus{outline:none}
 :root[data-theme=dark] .bi-para.cur{background-color:#4a3d1c}
 :root[data-theme=dark] .mbtn.sel{background-color:#c98a10;color:#1b2433}
 :root[data-theme=dark] :is(.wlist li.ok,.mbtn.done){background-color:var(--leaf-l)}
+
+/* hiệu ứng lật trang */
+.stage .leaf{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;transform-origin:left center;backface-visibility:hidden;pointer-events:none;z-index:2;background:#fff;box-shadow:6px 0 24px rgba(0,0,0,.35)}
+.stage .leaf.fwd{animation:flipfwd .75s cubic-bezier(.45,.05,.35,1) forwards}
+.stage .leaf.back{animation:flipback .75s cubic-bezier(.45,.05,.35,1) forwards}
+@keyframes flipfwd{0%{transform:rotateY(0);filter:brightness(1)}85%{opacity:1}100%{transform:rotateY(-110deg);filter:brightness(.6);opacity:0}}
+@keyframes flipback{0%{transform:rotateY(-110deg);filter:brightness(.6);opacity:0}15%{opacity:1}100%{transform:rotateY(0);filter:brightness(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){.stage .leaf{display:none}}

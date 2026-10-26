@@ -66,7 +66,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "12", date: "26/10/2026", note: "Lời kể sáng theo giọng đọc, chạm từ tiếng Anh, cuộn dọc, chữ to, ôn từ vựng" };
+  const APP_VERSION = { v: "13", date: "26/10/2026", note: "Bỏ chế độ cuộn dọc, thêm hiệu ứng lật trang, tự lật theo giọng đọc" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -96,9 +96,19 @@
     const root = $("#" + id); let i = Math.min(Math.max(start || 0, 0), items.length - 1);
     const img = $(".stage img", root), ind = $(".ind", root), prev = $(".v-prev", root), next = $(".v-next", root), lab = $(".vlabel", root), dots = $(".dots", root);
     dots.innerHTML = items.length > 1 && items.length <= 8 ? items.map(() => "<i></i>").join("") : "";
-    function render() {
+    let flipTok = 0;
+    function render(dir) {
       const it = items[i];
-      img.src = it.src; img.alt = it.alt; img.classList.remove("fade"); void img.offsetWidth; img.classList.add("fade");
+      const oldSrc = img.getAttribute("src"), tok = ++flipTok, st0 = $(".stage", root);
+      $$(".leaf", st0).forEach((l) => l.remove());
+      img.alt = it.alt;
+      if (dir && oldSrc && oldSrc !== it.src && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const leaf = document.createElement("img"); leaf.className = "leaf " + (dir > 0 ? "fwd" : "back"); leaf.alt = ""; leaf.setAttribute("aria-hidden", "true");
+        if (dir > 0) { img.src = it.src; leaf.src = oldSrc; } else { leaf.src = it.src; }
+        st0.appendChild(leaf);
+        const fin = () => { if (!leaf.parentNode) return; if (dir < 0 && tok === flipTok) img.src = it.src; leaf.remove(); };
+        leaf.addEventListener("animationend", fin); setTimeout(fin, 900);
+      } else { img.src = it.src; img.classList.remove("fade"); void img.offsetWidth; img.classList.add("fade"); }
       ind.textContent = (i + 1) + "/" + items.length;
       lab.textContent = it.label || "";
       prev.disabled = i === 0; next.disabled = i === items.length - 1;
@@ -106,7 +116,7 @@
       [i - 1, i + 1].forEach((k) => { if (items[k]) { const p = new Image(); p.src = items[k].src; } });
       if (onChange) onChange(i);
     }
-    const go = (d) => { const n = i + d; if (n < 0 || n >= items.length) return; i = n; render(); };
+    const go = (d) => { const n = i + d; if (n < 0 || n >= items.length) return; i = n; render(d); };
     prev.onclick = () => go(-1); next.onclick = () => go(1);
     const openZoom = () => { LB.opener = $(".v-zoom", root); lbOpen(items, i, (n) => { i = n; render(); }); };
     $(".v-zoom", root).onclick = openZoom; img.onclick = openZoom;
@@ -115,7 +125,7 @@
     st.addEventListener("pointerdown", (e) => { x0 = e.clientX; });
     st.addEventListener("pointerup", (e) => { if (x0 === null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1); });
     st.addEventListener("pointercancel", () => { x0 = null; });
-    const set = (n) => { if (n < 0 || n >= items.length || n === i) return; i = n; render(); };
+    const set = (n) => { if (n < 0 || n >= items.length || n === i) return; const d = n > i ? 1 : -1; i = n; render(d); };
     curViewer = { go, set };
     render();
   }
@@ -387,7 +397,6 @@
     const nextHref = n < 5 ? "#/chuong/" + (n + 1) : "#/ket-thuc";
     main.innerHTML = `<section class="view">
       <div class="chhead"><span class="kicker">Chương ${n}</span><h1>${esc(ch.vi)}</h1><p class="e" lang="en">${esc(ch.en)}</p></div>
-      <div class="row c" style="margin-bottom:10px"><div class="seg" role="group" aria-label="Cách xem tranh"><button type="button" data-vm="page" aria-pressed="${S.vmode !== "scroll"}">▭ Từng trang</button><button type="button" data-vm="scroll" aria-pressed="${S.vmode === "scroll"}">☰ Cuộn dọc</button></div></div>
       ${viewerHTML("cv")}
 
       <div class="panel"><div class="row" style="justify-content:space-between"><h2>💬 Lời của hai bạn</h2><div class="row" style="gap:8px">${langSeg(lang)}<span class="fsz" role="group" aria-label="Cỡ chữ"><button type="button" id="fsm" aria-label="Chữ nhỏ lại">A−</button><button type="button" id="fsp" aria-label="Chữ to lên">A+</button></span></div></div>
@@ -413,30 +422,6 @@
     mountViewer("cv", ch.images, S.pos[n] || 0, (i) => {
       S.pos[n] = i; if (!P.seen[i]) P.seen[i] = true; save(); updateReq();
     });
-    const pageViewer = curViewer;
-    let io = null, scrollMode = false;
-    const stageBox = $("#cv .stage");
-    function buildScroll() {
-      if ($("#vsc")) return;
-      const box = document.createElement("div"); box.id = "vsc"; box.className = "vsc";
-      box.innerHTML = ch.images.map((im, i) => `<figure data-i="${i}"><img src="${im.src}" alt="${esc(im.alt)}" loading="${i < 2 ? "eager" : "lazy"}" decoding="async"><figcaption>${i + 1}/${ch.images.length}</figcaption></figure>`).join("");
-      stageBox.insertBefore(box, stageBox.firstChild);
-      $$("figure img", box).forEach((im, i) => (im.onclick = () => { LB.opener = im; lbOpen(ch.images, i, (k) => scrollToFig(k, false)); }));
-      io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { const i = +e.target.dataset.i; if (!P.seen[i]) { P.seen[i] = true; S.pos[n] = i; save(); updateReq(); } } }), { root: stageBox, threshold: 0.55 });
-      $$("figure", box).forEach((f) => io.observe(f));
-    }
-    function scrollToFig(i, smooth) { const f = $('#vsc figure[data-i="' + i + '"]'); if (f) stageBox.scrollTo({ top: f.offsetTop - 4, behavior: smooth === false ? "auto" : "smooth" }); }
-    function setMode(m) {
-      scrollMode = m === "scroll"; S.vmode = m; save();
-      $("#cv").classList.toggle("vscmode", scrollMode); stageBox.classList.toggle("scroll", scrollMode);
-      $$("[data-vm]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.vm === m));
-      if (scrollMode) { buildScroll(); curViewer = { go: () => {}, set: (i) => scrollToFig(i) }; setTimeout(() => scrollToFig(S.pos[n] || 0, false), 30); }
-      else { curViewer = pageViewer; pageViewer.set(Math.min(S.pos[n] || 0, ch.images.length - 1)); stageBox.scrollTop = 0; }
-      const rbn = $("#readbtn"); if (rbn) rbn.classList.toggle("nofloat", scrollMode);
-    }
-    $$("[data-vm]").forEach((b) => (b.onclick = () => setMode(b.dataset.vm)));
-    if (S.vmode === "scroll") setMode("scroll");
-
     // lời
     const renderText = () => {
       $("#say").innerHTML = sayHTML(chSayLines(ch), lang, ch);
