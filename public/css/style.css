@@ -421,3 +421,51 @@ main:focus,main:focus-visible,#main:focus{outline:none}
 :root[data-theme=dark] .mapwrap .cur .dot{fill:#c98a10}
 :root[data-theme=dark] .mapwrap .lock .dot{fill:#2b3748}
 @media(prefers-reduced-motion:reduce){.mapwrap .here .halo{animation:none}}
+
+/* ===== v12: lời kể sáng theo giọng đọc, từ vựng chạm được, cuộn dọc, ôn từ ===== */
+.say .bubble{font-size:calc(1.15rem*var(--tfs,1))}
+.say .bubble .l2{font-size:calc(1.05rem*var(--tfs,1))}
+.bi-para,.full p{font-size:calc(1.1rem*var(--tfs,1))}
+.fsz{display:inline-flex;gap:4px}
+.fsz button{min-width:44px;min-height:44px;border:2.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font:800 1rem var(--f-head);cursor:pointer}
+.fsz button:disabled{opacity:.4}
+.full summary small{font-weight:400;color:var(--ink-soft)}
+.parawrap{max-height:48vh;overflow-y:auto;padding-right:6px;scroll-behavior:smooth;overscroll-behavior:contain}
+.bi-para{border-left:6px solid transparent;border-radius:10px;padding:6px 8px 6px 10px;transition:background .25s,border-color .25s}
+.bi-para.cur{background:#fff3cf;border-left-color:var(--sun)}
+.vw{font:inherit;color:inherit;background:none;border:0;padding:0;border-bottom:2.5px dotted var(--coral);cursor:pointer;border-radius:2px}
+.vw:hover,.vw:focus-visible{background:rgba(247,183,49,.35)}
+.wsheet{position:fixed;left:50%;bottom:16px;transform:translate(-50%,140%);z-index:90;display:flex;align-items:center;gap:8px;background:#fff;color:var(--ink);border:3px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:10px 12px;max-width:min(92vw,460px);width:max-content;transition:transform .25s;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.wsheet.on{transform:translate(-50%,0)}
+.wsheet .wtxt{display:grid;line-height:1.25}.wsheet .wtxt b{font:800 1.25rem var(--f-head)}
+.wsheet button{min-width:44px;min-height:44px;border:2.5px solid var(--line);border-radius:50%;background:var(--sky);color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
+.wsheet svg{width:20px;height:20px}
+.wsay.inl{display:inline-grid;vertical-align:middle;min-width:44px;min-height:44px;border:2.5px solid var(--line);border-radius:50%;background:var(--sky);color:var(--ink);place-items:center;padding:0}
+.wsay.inl svg{width:20px;height:20px}
+.bigw{font:800 1.5em var(--f-head);color:var(--coral)}
+/* cuộn dọc */
+.stage.scroll{overflow-y:auto;max-height:78vh;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.stage.scroll>img{display:none}
+.stage.scroll .readbtn{display:none}
+.stage.scroll .pbar{position:sticky;bottom:0;margin-top:-64px}
+.vsc figure{margin:0 0 6px;position:relative}
+.vsc figure img{width:100%;height:auto;display:block;cursor:zoom-in;background:#f2f2f2}
+.vsc figcaption{position:absolute;right:8px;top:8px;background:rgba(36,56,74,.78);color:#fff;font-weight:800;font-size:.8rem;padding:2px 10px;border-radius:999px}
+#cv.vscmode>.vctl,#cv.vscmode>.vlabel,#cv.vscmode>.dots,#cv.vscmode>.row{display:none}
+/* ôn từ vựng */
+.gamegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:14px 0}
+.gcard{flex-direction:column;gap:2px;padding:16px;text-align:center;line-height:1.2}
+.gcard .gi{font-size:2.2rem}.gcard small{font:700 .85rem var(--f-body);opacity:.85}
+.gcard[disabled]{opacity:.45;pointer-events:none}
+.wlist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.wlist li{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:6px 10px;border:2.5px solid var(--line);border-radius:12px;background:#fff}
+.wlist li.ok{background:var(--leaf-l)}.wlist li span{color:var(--ink-soft);flex:1}.wlist li i{font-style:normal;letter-spacing:2px;color:var(--leaf)}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mcol{display:grid;gap:10px;align-content:start}
+.mbtn{min-height:56px;padding:8px 10px;border:3px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);font:800 1rem var(--f-head);cursor:pointer;box-shadow:3px 3px 0 var(--line);line-height:1.2}
+.mbtn.sel{background:var(--sun)}.mbtn.done{background:var(--leaf-l);color:var(--leaf);opacity:.8;box-shadow:none}
+.mbtn.shake{animation:shk .35s}
+@keyframes shk{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+:root[data-theme=dark] :is(.wsheet,.fsz button,.wlist li,.mbtn){background-color:var(--card);color:var(--ink)}
+:root[data-theme=dark] .bi-para.cur{background-color:#4a3d1c}
+:root[data-theme=dark] .mbtn.sel{background-color:#c98a10;color:#1b2433}
+:root[data-theme=dark] :is(.wlist li.ok,.mbtn.done){background-color:var(--leaf-l)}

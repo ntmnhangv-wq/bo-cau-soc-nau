@@ -10,7 +10,7 @@
   /* ---------- lưu trữ (an toàn khi bị chặn) ---------- */
   const KEY = "bcsn.v1";
   let appReady = false;
-  const defaults = { pos: {}, done: {}, prog: {}, autoSync: true, best: null, plays: 0, lang: "bi", speed: 1, vol: 1, last: null, dev: null, qxp: 0, lvl: null, cls: "", noTimer: false, bestStreak: 0 };
+  const defaults = { pos: {}, done: {}, prog: {}, autoSync: true, best: null, plays: 0, lang: "bi", speed: 1, vol: 1, last: null, dev: null, qxp: 0, rxp: 0, vstat: {}, vmode: "page", tfs: 0, lvl: null, cls: "", noTimer: false, bestStreak: 0 };
   let S = Object.assign({}, defaults);
   try { Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
   if (!S.dev) S.dev = "d" + Math.random().toString(36).slice(2, 10);
@@ -66,7 +66,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "11", date: "26/10/2026", note: "Đổi tên điểm trên bản đồ hành trình" };
+  const APP_VERSION = { v: "12", date: "26/10/2026", note: "Lời kể sáng theo giọng đọc, chạm từ tiếng Anh, cuộn dọc, chữ to, ôn từ vựng" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -132,14 +132,22 @@
     const L = [["vi", "Tiếng Việt"], ["en", "English"], ["bi", "Song ngữ"]];
     return `<div class="seg" role="group" aria-label="Chọn ngôn ngữ lời đọc">${L.map(([k, t]) => `<button type="button" data-lang="${k}" aria-pressed="${cur === k}">${t}</button>`).join("")}</div>`;
   }
-  function sayHTML(lines, lang) {
+  /* từ vựng trong lời thoại: chạm để xem nghĩa */
+  function enHTML(text, ch) {
+    let h = esc(text);
+    if (!ch || !ch.vocab) return h;
+    const ws = ch.vocab.map((v, k) => [v[0], k]).sort((a, b) => b[0].length - a[0].length);
+    const re = new RegExp("\\b(" + ws.map((w) => w[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")(?:s|es|ed|d|ing)?\\b", "gi");
+    return h.replace(re, (m, w) => { const k = ws.find((x) => x[0].toLowerCase() === w.toLowerCase())[1]; return `<button type="button" class="vw" data-ch="${ch.id}" data-k="${k}">${m}</button>`; });
+  }
+  function sayHTML(lines, lang, ch) {
     // lines: [{av, vi, en}]
     return `<div class="say">${lines.map((l, k) => {
       const cls = l.who === "soc" ? "soc" : "bc";
       let body = "";
       if (lang === "vi") body = esc(l.vi);
-      else if (lang === "en") body = `<span lang="en">${esc(l.en)}</span>`;
-      else body = esc(l.vi) + `<span class="l2" lang="en">${esc(l.en)}</span>`;
+      else if (lang === "en") body = `<span lang="en">${enHTML(l.en, ch)}</span>`;
+      else body = esc(l.vi) + `<span class="l2" lang="en">${enHTML(l.en, ch)}</span>`;
       return `<div class="line"><img src="${l.who === "soc" ? SOC : BC}" alt="${l.who === "soc" ? "Sóc Nâu" : "Bồ Câu"}"><div class="bubble ${cls}">${body}</div></div>`;
     }).join("")}</div>`;
   }
@@ -149,12 +157,12 @@
   function fullTextHTML(ch, lang) {
     const T = ch.text;
     const ti = lang === "vi" ? esc(T.title[0]) : lang === "en" ? `<span lang="en">${esc(T.title[1])}</span>` : `${esc(T.title[0])} · <span lang="en" class="en">${esc(T.title[1])}</span>`;
-    const ps = T.paras.map((p) => {
-      if (lang === "vi") return `<div class="bi-para"><p>${esc(p[0])}</p></div>`;
-      if (lang === "en") return `<div class="bi-para"><p lang="en" class="en-p">${esc(p[1])}</p></div>`;
-      return `<div class="bi-para"><p>${esc(p[0])}</p><p lang="en" class="en-p">${esc(p[1])}</p></div>`;
+    const ps = T.paras.map((p, i) => {
+      if (lang === "vi") return `<div class="bi-para" data-p="${i}"><p>${esc(p[0])}</p></div>`;
+      if (lang === "en") return `<div class="bi-para" data-p="${i}"><p lang="en" class="en-p">${enHTML(p[1], ch)}</p></div>`;
+      return `<div class="bi-para" data-p="${i}"><p>${esc(p[0])}</p><p lang="en" class="en-p">${enHTML(p[1], ch)}</p></div>`;
     }).join("");
-    return `<h3>${ti}</h3><div class="${lang === "bi" ? "bi" : ""}">${ps}</div>
+    return `<h3>${ti}</h3><div class="parawrap" id="parawrap"><div class="${lang === "bi" ? "bi" : ""}">${ps}</div></div>
       <div class="src"><b>Nguồn chính thức / Official sources:</b><ul>${T.sources.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></div>
       <p class="note"><a href="${ch.pdf}" target="_blank" rel="noopener">Mở bản PDF song ngữ trên Google Drive ↗</a></p>`;
   }
@@ -177,7 +185,7 @@
       }
       if (S.done[c.id]) x += 50;
     }
-    return x + (S.qxp || 0);
+    return x + (S.qxp || 0) + Math.min(S.rxp || 0, 100);
   }
   function levelInfo() {
     const x = calcXP(); let i = 0;
@@ -346,6 +354,7 @@
         <a class="btn alt sm" href="#/lam-quen">👋 Làm quen Bồ Câu và Sóc Nâu</a>
         <a class="btn alt sm" href="#/doc-truyen">📖 Đọc toàn bộ truyện</a>
         <a class="btn sm" href="#/thu-thach">⭐ Thử thách nhớ nhanh</a>
+        <a class="btn alt sm" href="#/on-tu">🔤 Ôn từ vựng${needReview().length ? " (" + needReview().length + ")" : ""}</a>
         <a class="btn alt sm" href="#/xep-hang">🏆 Bảng xếp hạng lớp</a>
       </div></div></section>`;
   };
@@ -373,16 +382,17 @@
     S.last = n; save();
     const P = (S.prog[n] = S.prog[n] || { seen: {}, vocab: {}, audio: false });
     const badTrack = {};
-    let lastIdx = -1;
+    let lastIdx = -1, lastP = -2;
     let lang = S.lang, track = "vi", playing = false, dragging = false;
     const nextHref = n < 5 ? "#/chuong/" + (n + 1) : "#/ket-thuc";
     main.innerHTML = `<section class="view">
       <div class="chhead"><span class="kicker">Chương ${n}</span><h1>${esc(ch.vi)}</h1><p class="e" lang="en">${esc(ch.en)}</p></div>
+      <div class="row c" style="margin-bottom:10px"><div class="seg" role="group" aria-label="Cách xem tranh"><button type="button" data-vm="page" aria-pressed="${S.vmode !== "scroll"}">▭ Từng trang</button><button type="button" data-vm="scroll" aria-pressed="${S.vmode === "scroll"}">☰ Cuộn dọc</button></div></div>
       ${viewerHTML("cv")}
 
-      <div class="panel"><div class="row" style="justify-content:space-between"><h2>💬 Lời của hai bạn</h2>${langSeg(lang)}</div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2>💬 Lời của hai bạn</h2><div class="row" style="gap:8px">${langSeg(lang)}<span class="fsz" role="group" aria-label="Cỡ chữ"><button type="button" id="fsm" aria-label="Chữ nhỏ lại">A−</button><button type="button" id="fsp" aria-label="Chữ to lên">A+</button></span></div></div>
         <div id="say"></div>
-        <details class="full" id="full"><summary>Đọc lời đầy đủ của chương</summary><div id="fulltxt"></div></details>
+        <details class="full" id="full" open><summary>📖 Lời kể của chương <small>(sáng lên theo giọng đọc)</small></summary><div id="fulltxt"></div></details>
       </div>
 
       <p class="note warn" id="anote" hidden></p>
@@ -390,6 +400,7 @@
       <div class="panel"><h2>🔤 Từ vựng Anh–Việt</h2>
         <p class="note" style="margin-top:-6px">Chạm vào thẻ để xem nghĩa tiếng Việt. Bấm loa để nghe phát âm.</p>
         <div class="vgrid">${ch.vocab.map((v, k) => `<div style="position:relative"><button class="vcard" type="button" aria-pressed="false" data-k="${k}"><span class="w" lang="en">${esc(v[0])}</span><span class="hint">chạm để xem nghĩa</span><span class="m">${esc(v[1])}</span></button><button class="say-w" type="button" data-w="${esc(v[0])}" aria-label="Nghe phát âm ${esc(v[0])}">${ICON.vol}</button></div>`).join("")}</div>
+        <div class="row c" style="margin-top:12px"><a class="btn sm alt" href="#/on-tu">🎮 Chơi ôn từ vựng</a></div>
       </div>
 
       <div class="panel"><div class="card req" id="req"><h3>🎯 Hoàn thành chương để mở tiếp</h3>
@@ -402,15 +413,43 @@
     mountViewer("cv", ch.images, S.pos[n] || 0, (i) => {
       S.pos[n] = i; if (!P.seen[i]) P.seen[i] = true; save(); updateReq();
     });
+    const pageViewer = curViewer;
+    let io = null, scrollMode = false;
+    const stageBox = $("#cv .stage");
+    function buildScroll() {
+      if ($("#vsc")) return;
+      const box = document.createElement("div"); box.id = "vsc"; box.className = "vsc";
+      box.innerHTML = ch.images.map((im, i) => `<figure data-i="${i}"><img src="${im.src}" alt="${esc(im.alt)}" loading="${i < 2 ? "eager" : "lazy"}" decoding="async"><figcaption>${i + 1}/${ch.images.length}</figcaption></figure>`).join("");
+      stageBox.insertBefore(box, stageBox.firstChild);
+      $$("figure img", box).forEach((im, i) => (im.onclick = () => { LB.opener = im; lbOpen(ch.images, i, (k) => scrollToFig(k, false)); }));
+      io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { const i = +e.target.dataset.i; if (!P.seen[i]) { P.seen[i] = true; S.pos[n] = i; save(); updateReq(); } } }), { root: stageBox, threshold: 0.55 });
+      $$("figure", box).forEach((f) => io.observe(f));
+    }
+    function scrollToFig(i, smooth) { const f = $('#vsc figure[data-i="' + i + '"]'); if (f) stageBox.scrollTo({ top: f.offsetTop - 4, behavior: smooth === false ? "auto" : "smooth" }); }
+    function setMode(m) {
+      scrollMode = m === "scroll"; S.vmode = m; save();
+      $("#cv").classList.toggle("vscmode", scrollMode); stageBox.classList.toggle("scroll", scrollMode);
+      $$("[data-vm]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.vm === m));
+      if (scrollMode) { buildScroll(); curViewer = { go: () => {}, set: (i) => scrollToFig(i) }; setTimeout(() => scrollToFig(S.pos[n] || 0, false), 30); }
+      else { curViewer = pageViewer; pageViewer.set(Math.min(S.pos[n] || 0, ch.images.length - 1)); stageBox.scrollTop = 0; }
+      const rbn = $("#readbtn"); if (rbn) rbn.classList.toggle("nofloat", scrollMode);
+    }
+    $$("[data-vm]").forEach((b) => (b.onclick = () => setMode(b.dataset.vm)));
+    if (S.vmode === "scroll") setMode("scroll");
 
     // lời
     const renderText = () => {
-      $("#say").innerHTML = sayHTML(chSayLines(ch), lang);
+      $("#say").innerHTML = sayHTML(chSayLines(ch), lang, ch);
       $("#fulltxt").innerHTML = fullTextHTML(ch, lang);
       $$("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.lang === lang));
     };
     renderText();
-    $$("[data-lang]").forEach((b) => (b.onclick = () => { lang = b.dataset.lang; S.lang = lang; save(); renderText(); }));
+    $$("[data-lang]").forEach((b) => (b.onclick = () => { lang = b.dataset.lang; S.lang = lang; save(); renderText(); lastP = -2; syncText(); }));
+    // cỡ chữ
+    const applyFs = () => { document.documentElement.style.setProperty("--tfs", FS[S.tfs || 0]); $("#fsm").disabled = (S.tfs || 0) === 0; $("#fsp").disabled = (S.tfs || 0) === FS.length - 1; };
+    $("#fsm").onclick = () => { S.tfs = Math.max(0, (S.tfs || 0) - 1); save(); applyFs(); };
+    $("#fsp").onclick = () => { S.tfs = Math.min(FS.length - 1, (S.tfs || 0) + 1); save(); applyFs(); };
+    applyFs();
 
     // yêu cầu hoàn thành chương
     function updateReq() {
@@ -473,7 +512,7 @@
     };
     const rafLoop = () => { if (!playing) return; syncImage(); requestAnimationFrame(rafLoop); };
     const loadTrack = (t) => {
-      track = t; lastIdx = -1; stopAudio(); setPlayUI(false); note.hidden = true;
+      track = t; lastIdx = -1; lastP = -2; stopAudio(); setPlayUI(false); note.hidden = true;
       au.src = "audio/" + t + "-" + n + ".mp3"; au.preload = "metadata"; au.playbackRate = S.speed; au.volume = S.vol;
       seek.value = 0; time.textContent = "0:00 / 0:00";
       $("#trk").textContent = t === "vi" ? "Việt" : "English";
@@ -494,8 +533,8 @@
       note.innerHTML = `Audio ${lbl} của chương này chưa tải được (có thể chưa có file hoặc đang mất mạng). ${ch.driveAudio[track] ? `<a href="${ch.driveAudio[track]}" target="_blank" rel="noopener">Nghe trên Google Drive ↗</a>` : ""}`;
     };
     au.onpause = () => setPlayUI(false);
-    au.onplay = () => { lastIdx = -1; setPlayUI(true); };
-    au.onseeked = () => { lastIdx = -1; syncImage(); };
+    au.onplay = () => { lastIdx = -1; lastP = -2; setPlayUI(true); };
+    au.onseeked = () => { lastIdx = -1; lastP = -2; syncImage(); };
     play.onclick = () => { if (au.paused) { note.hidden = true; au.play().catch(() => {}); } else au.pause(); };
     rb.onclick = (e) => { e.stopPropagation(); play.onclick(); };
     rb.onpointerdown = (e) => e.stopPropagation(); rb.onpointerup = (e) => e.stopPropagation();
@@ -505,7 +544,17 @@
     const SPEEDS = [0.75, 1, 1.25, 1.5];
     $("#spd").onclick = () => { S.speed = SPEEDS[(SPEEDS.indexOf(S.speed) + 1) % SPEEDS.length]; au.playbackRate = S.speed; $("#spd").textContent = S.speed + "×"; save(); };
     $("#trk").onclick = () => { const t = track === "vi" ? "en" : "vi"; const was = !au.paused; loadTrack(t); if (was) au.play().catch(() => {}); };
+    function syncText() {
+      const pt = ch.ptimes && ch.ptimes[track], wrap = $("#parawrap");
+      if (!pt || !wrap || (au.paused && au.currentTime < 0.05)) return;
+      let k = -1; for (let i = 0; i < pt.length; i++) { if (au.currentTime >= pt[i] - 0.15) k = i; else break; }
+      if (k === lastP) return; lastP = k;
+      $$(".bi-para", wrap).forEach((e) => e.classList.toggle("cur", +e.dataset.p === k));
+      const el = $('.bi-para[data-p="' + k + '"]', wrap);
+      if (el && wrap.scrollHeight > wrap.clientHeight + 4) wrap.scrollTo({ top: Math.max(0, el.offsetTop - wrap.offsetTop - 6), behavior: "smooth" });
+    }
     function syncImage() {
+      syncText();
       const pts = ch.sync && ch.sync[track];
       if (!pts || !S.autoSync || !curViewer || (au.paused && au.currentTime < 0.05)) return;
       let idx = 0; for (const pt of pts) { if (au.currentTime >= pt[0]) idx = pt[1]; else break; }
@@ -521,7 +570,7 @@
     const canSay = "speechSynthesis" in window;
     $$(".say-w").forEach((b) => { if (!canSay) { b.hidden = true; return; } b.onclick = () => { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(b.dataset.w); u.lang = "en-US"; u.rate = 0.85; speechSynthesis.speak(u); } catch (e) {} }; });
 
-    cleanup = () => { try { speechSynthesis.cancel(); } catch (e) {} document.removeEventListener("keydown", fsKey); document.body.classList.remove("noscroll"); try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {} clearTimeout(hideT); };
+    cleanup = () => { if (io) io.disconnect(); hideWord(); try { speechSynthesis.cancel(); } catch (e) {} document.removeEventListener("keydown", fsKey); document.body.classList.remove("noscroll"); try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {} clearTimeout(hideT); };
   };
 
   /* Đọc toàn bộ truyện */
@@ -771,6 +820,133 @@
     mountRate();
   };
 
+  /* ---------- cỡ chữ + bảng nghĩa từ vựng ---------- */
+  const FS = [1, 1.15, 1.3, 1.5];
+  const canSay = "speechSynthesis" in window;
+  function speakEn(w) { if (!canSay) return; try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(w); u.lang = "en-US"; u.rate = 0.85; speechSynthesis.speak(u); } catch (e) {} }
+  let wsheet = null, wsT = null;
+  function hideWord() { clearTimeout(wsT); if (wsheet) wsheet.classList.remove("on"); }
+  function showWord(chId, k) {
+    const c = D.chapters.find((x) => x.id === +chId); if (!c || !c.vocab[k]) return;
+    const v = c.vocab[k];
+    if (!S.vstat[v[0]]) { S.vstat[v[0]] = { b: 0, w: 0, t: Date.now() }; save(); }
+    if (!wsheet) { wsheet = document.createElement("div"); wsheet.className = "wsheet"; wsheet.setAttribute("role", "status"); document.body.appendChild(wsheet); }
+    wsheet.innerHTML = `<div class="wtxt"><b lang="en">${esc(v[0])}</b><span>${esc(v[1])}</span></div>${canSay ? `<button type="button" class="wsay" aria-label="Nghe phát âm ${esc(v[0])}">${ICON.vol}</button>` : ""}<button type="button" class="wx" aria-label="Đóng">✕</button>`;
+    wsheet.classList.add("on");
+    const sb = $(".wsay", wsheet); if (sb) sb.onclick = () => speakEn(v[0]);
+    $(".wx", wsheet).onclick = hideWord;
+    speakEn(v[0]);
+    clearTimeout(wsT); wsT = setTimeout(hideWord, 9000);
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest(".vw");
+    if (b) { e.preventDefault(); showWord(b.dataset.ch, +b.dataset.k); }
+    else if (wsheet && wsheet.classList.contains("on") && !(e.target.closest && e.target.closest(".wsheet"))) hideWord();
+  });
+
+  /* ---------- ôn từ vựng (lặp lại ngắt quãng đơn giản) ---------- */
+  const allVocab = () => { const out = []; D.chapters.forEach((c) => c.vocab.forEach((v, k) => out.push({ w: v[0], m: v[1], ch: c.id, k, open: canOpen(c.id) }))); return out; };
+  const isMet = (x) => { const P = S.prog[x.ch]; return !!(S.vstat[x.w] || (P && P.vocab && P.vocab[x.k])); };
+  const boxOf = (x) => (S.vstat[x.w] ? S.vstat[x.w].b || 0 : 0);
+  const needReview = () => allVocab().filter((x) => x.open && isMet(x) && boxOf(x) < 3);
+  function markWord(x, ok) {
+    const st = (S.vstat[x.w] = S.vstat[x.w] || { b: 0, w: 0 });
+    if (ok) st.b = Math.min(4, (st.b || 0) + 1); else { st.b = 0; st.w = (st.w || 0) + 1; }
+    st.t = Date.now();
+  }
+  const byBox = (arr) => shuffle(arr).sort((a, b) => boxOf(a) - boxOf(b));
+  let R = null, M = null;
+  views.review = () => {
+    R = null; M = null;
+    const V = allVocab(), met = V.filter((x) => x.open && isMet(x)), need = needReview();
+    const dots = (x) => "●".repeat(Math.min(boxOf(x), 4)) + "○".repeat(4 - Math.min(boxOf(x), 4));
+    main.innerHTML = `<section class="view quiz-wrap">
+      <div class="title-wrap"><span class="kicker">Ôn từ vựng</span><h1>Từ nào cần ôn lại?</h1>
+        <p class="note">Đã gặp <b>${met.length}</b>/${V.length} từ · <b>${need.length}</b> từ cần ôn. Từ nào sai nhiều sẽ được hỏi lại nhiều hơn.</p></div>
+      ${levelHTML()}
+      ${met.length < 3 ? `<div class="card">Bạn cần gặp ít nhất 3 từ để chơi. Hãy lật thẻ từ vựng hoặc chạm vào từ gạch chân trong lời thoại ở <a href="#/chuong/${firstOpen()}">chương đang học</a> nhé.</div>` : ""}
+      <div class="gamegrid">
+        <button class="btn gcard" id="gmc" type="button" ${met.length < 3 ? "disabled" : ""}><span class="gi">🎯</span><b>Trắc nghiệm</b><small>Nghe, đọc, chọn đúng · ${Math.min(8, met.length)} câu</small></button>
+        <button class="btn gcard alt" id="gmt" type="button" ${met.length < 3 ? "disabled" : ""}><span class="gi">🧩</span><b>Ghép cặp</b><small>Nối từ với nghĩa · 6 cặp</small></button>
+      </div>
+      ${met.length ? `<div class="card"><h3>Từ của bạn</h3><ul class="wlist">${met.map((x) => `<li class="${boxOf(x) >= 3 ? "ok" : ""}"><b lang="en">${esc(x.w)}</b> <span>${esc(x.m)}</span><i aria-label="Mức nhớ ${boxOf(x)}/4">${dots(x)}</i></li>`).join("")}</ul></div>` : ""}
+      <div class="row c"><a class="btn alt sm" href="#/muc-luc">☰ Về mục lục</a></div></section>`;
+    $("#gmc").onclick = startReview; $("#gmt").onclick = startMatch;
+  };
+  function startReview() {
+    const V = allVocab(), met = V.filter((x) => x.open && isMet(x));
+    const items = byBox(met).slice(0, 8);
+    const kinds = ["en2vi", "hear", "vi2en"];
+    R = { i: 0, items, ok: 0, xp: 0, wrong: [], types: items.map((_, i) => { const t = kinds[i % 3]; return t === "hear" && !canSay ? "en2vi" : t; }), locked: false };
+    reviewQ();
+  }
+  function reviewQ() {
+    const V = allVocab(), x = R.items[R.i], t = R.types[R.i];
+    const others = shuffle(V.filter((y) => y.w !== x.w && (t === "vi2en" || t === "hear" ? true : y.m !== x.m))).slice(0, 3);
+    const opts = shuffle([x].concat(others));
+    const txt = (y) => (t === "en2vi" ? y.m : y.w);
+    const prompt = t === "en2vi" ? `Từ <b lang="en" class="bigw">${esc(x.w)}</b> nghĩa là gì? ${canSay ? `<button type="button" class="wsay inl" id="rsay" aria-label="Nghe phát âm">${ICON.vol}</button>` : ""}`
+      : t === "hear" ? `Nghe và chọn từ đúng: <button type="button" class="btn sm" id="rsay">${ICON.vol} Nghe lại</button>`
+      : `Từ tiếng Anh nào có nghĩa là <b class="bigw">“${esc(x.m)}”</b>?`;
+    main.innerHTML = `<section class="view quiz-wrap">
+      <div class="qhead"><span class="n">${R.i + 1}/${R.items.length}</span><span class="s">✔ Đúng: <span id="sc">${R.ok}</span></span></div>
+      <div class="bar" aria-hidden="true"><i style="width:${(R.i / R.items.length) * 100}%"></i></div>
+      <h2 class="qtext" id="qt">${prompt}</h2>
+      <ul class="opts" role="group" aria-labelledby="qt">${opts.map((y, k) => `<li><button class="opt" type="button" data-w="${esc(y.w)}"><span class="L">${letters[k]}</span><span ${t === "en2vi" ? "" : 'lang="en"'}>${esc(txt(y))}</span></button></li>`).join("")}</ul>
+      <div id="fb" aria-live="assertive"></div><div class="row c" style="margin-top:18px" id="nxt"></div></section>`;
+    const rs = $("#rsay"); if (rs) rs.onclick = () => speakEn(x.w);
+    if (t === "hear" || t === "en2vi") speakEn(x.w);
+    R.locked = false;
+    $$(".opt").forEach((b) => (b.onclick = () => {
+      if (R.locked) return; R.locked = true;
+      const ok = b.dataset.w === x.w;
+      markWord(x, ok); if (ok) { R.ok++; R.xp += 2; } else R.wrong.push(x);
+      $$(".opt").forEach((o) => { o.disabled = true; if (o.dataset.w === x.w) o.classList.add("right"); else if (o === b) o.classList.add("wrong"); else o.classList.add("dim"); });
+      $("#sc").textContent = R.ok;
+      $("#fb").innerHTML = `<div class="feedback ${ok ? "ok" : "no"}"><img src="${ok ? SOC : BC}" alt=""><div><h3>${ok ? "Chính xác! +2 XP" : "Cùng ghi nhớ nhé!"}</h3><p style="margin:0"><b lang="en">${esc(x.w)}</b> = ${esc(x.m)}</p></div></div>`;
+      const last = R.i === R.items.length - 1;
+      $("#nxt").innerHTML = `<button class="btn ${last ? "coral" : ""}" id="nx" type="button">${last ? "Xem kết quả 🎉" : "Câu tiếp theo →"}</button>`;
+      $("#nx").focus(); save();
+      $("#nx").onclick = () => { if (last) return reviewDone(R.ok + "/" + R.items.length + " câu đúng", R.xp, R.wrong); R.i++; reviewQ(); window.scrollTo(0, 0); };
+    }));
+  }
+  function reviewDone(summary, xp, wrong) {
+    S.rxp = (S.rxp || 0) + xp; save();
+    main.innerHTML = `<section class="view result"><div class="rpic"><img class="av" src="${SOC}" alt="Sóc Nâu"><img class="av" src="${BC}" alt="Bồ Câu"></div>
+      <h1>Ôn xong rồi!</h1><div class="score"><b>${esc(summary)}</b></div>
+      <div class="chips" style="justify-content:center;margin:8px 0"><span class="chip">✨ +${xp} XP</span></div>${levelHTML()}
+      ${wrong.length ? `<div class="card review"><b>Những từ cần nhớ thêm:</b><ul>${wrong.map((x) => `<li><b lang="en">${esc(x.w)}</b> = ${esc(x.m)} · <a href="#/chuong/${x.ch}">Chương ${x.ch}</a></li>`).join("")}</ul></div>` : `<p>Không sai từ nào, thật tuyệt vời! 🎉</p>`}
+      <div class="row c" style="margin-top:20px"><button class="btn" id="again" type="button">↻ Ôn tiếp</button><a class="btn alt" href="#/muc-luc">Về mục lục</a></div></section>`;
+    $("#again").onclick = () => views.review();
+  }
+  function startMatch() {
+    const V = allVocab(), open = V.filter((x) => x.open);
+    let pool = byBox(open.filter(isMet)).slice(0, 6);
+    if (pool.length < 6) pool = pool.concat(shuffle(open.filter((x) => !pool.includes(x))).slice(0, 6 - pool.length));
+    M = { items: pool, left: shuffle(pool), right: shuffle(pool), sel: null, done: {}, bad: {}, mistakes: 0, t0: Date.now() };
+    matchRender();
+  }
+  function matchRender() {
+    const sel = M.sel;
+    const btn = (x, side) => `<button type="button" class="mbtn${M.done[x.w] ? " done" : ""}${sel && sel.side === side && sel.w === x.w ? " sel" : ""}" data-side="${side}" data-w="${esc(x.w)}" ${M.done[x.w] ? "disabled" : ""} ${side === "L" ? 'lang="en"' : ""}>${esc(side === "L" ? x.w : x.m)}</button>`;
+    main.innerHTML = `<section class="view quiz-wrap"><div class="qhead"><span class="n">Ghép cặp</span><span class="s">Đã ghép: ${Object.keys(M.done).length}/${M.items.length} · Nhầm: ${M.mistakes}</span></div>
+      <p class="note" style="text-align:center">Chạm một từ, rồi chạm nghĩa tương ứng.</p>
+      <div class="mgrid"><div class="mcol">${M.left.map((x) => btn(x, "L")).join("")}</div><div class="mcol">${M.right.map((x) => btn(x, "R")).join("")}</div></div></section>`;
+    $$(".mbtn").forEach((b) => (b.onclick = () => {
+      const side = b.dataset.side, w = b.dataset.w;
+      if (side === "L") speakEn(w);
+      if (!M.sel || M.sel.side === side) { M.sel = { side, w }; return matchRender(); }
+      const ok = M.sel.w === w; const first = M.sel.w;
+      if (ok) { M.done[w] = true; M.sel = null; if (Object.keys(M.done).length === M.items.length) return matchDone(); matchRender(); }
+      else { M.mistakes++; M.bad[first] = true; M.bad[w] = true; M.sel = null; matchRender(); $$(".mbtn").forEach((o) => { if (o.dataset.w === first || o.dataset.w === w) o.classList.add("shake"); }); }
+    }));
+  }
+  function matchDone() {
+    let xp = 0; const wrong = [];
+    M.items.forEach((x) => { const ok = !M.bad[x.w]; markWord(x, ok); if (ok) xp += 1; else wrong.push(x); });
+    reviewDone("Ghép đủ " + M.items.length + " cặp · nhầm " + M.mistakes + " lần · " + Math.round((Date.now() - M.t0) / 1000) + " giây", xp, wrong);
+  }
+
   /* Hộ chiếu khám phá */
   let deferredInstall = null;
   window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferredInstall = e; });
@@ -817,10 +993,10 @@
   }
 
   /* ---------- bộ định tuyến ---------- */
-  const titles = { home: "Bồ Câu & Sóc Nâu – TP. Hồ Chí Minh, thành phố tôi yêu", toc: "Mục lục", meet: "Làm quen", book: "Đọc toàn bộ truyện", end: "Hẹn gặp lại", quiz: "Thử thách", result: "Kết quả", about: "Giới thiệu", passport: "Hộ chiếu khám phá", rank: "Bảng xếp hạng lớp" };
+  const titles = { home: "Bồ Câu & Sóc Nâu – TP. Hồ Chí Minh, thành phố tôi yêu", toc: "Mục lục", meet: "Làm quen", book: "Đọc toàn bộ truyện", end: "Hẹn gặp lại", quiz: "Thử thách", result: "Kết quả", about: "Giới thiệu", passport: "Hộ chiếu khám phá", rank: "Bảng xếp hạng lớp", review: "Ôn từ vựng" };
   function route() {
     if (cleanup) { cleanup(); cleanup = null; }
-    stopAudio(); lbClose(); curViewer = null;
+    stopAudio(); lbClose(); curViewer = null; hideWord();
     au.onerror = au.onended = au.onpause = au.onplay = au.ontimeupdate = au.onloadedmetadata = au.onseeked = null;
     const h = (location.hash || "#/").replace(/^#\/?/, "").split("/");
     let name = "home", arg;
@@ -836,6 +1012,7 @@
       case "gioi-thieu": name = "about"; break;
       case "ho-chieu": name = "passport"; break;
       case "xep-hang": name = "rank"; break;
+      case "on-tu": name = "review"; break;
       default: name = "home";
     }
     if (name === "chapter" && arg >= 1 && arg <= 5 && !canOpen(arg)) { const f = firstOpen(); toast("🔒 Hãy hoàn thành Chương " + f + " trước nhé!"); location.replace("#/chuong/" + f); return; }
