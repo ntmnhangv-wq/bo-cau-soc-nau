@@ -268,3 +268,10 @@ footer{max-width:1000px;margin:0 auto;padding:0 14px 30px;text-align:center;colo
 .chcard .lock{position:absolute;right:10px;top:10px;background:#fff;border:2.5px solid var(--line);border-radius:999px;padding:0 10px}
 label.sync{display:flex;gap:8px;align-items:center;margin-top:12px;font-weight:700}
 label.sync input{width:22px;height:22px;accent-color:var(--coral)}
+
+/* nút đọc trên tranh */
+.readbtn{position:absolute;left:10px;bottom:14px;z-index:3;border:3px solid var(--line);background:#fff;color:var(--ink);font:800 1rem/1 "Baloo 2",system-ui,sans-serif;padding:10px 16px;border-radius:999px;box-shadow:0 3px 0 var(--line);cursor:pointer;min-height:44px}
+.readbtn.on{background:var(--sun,#f7b731)}
+.readbtn:active{transform:translateY(2px);box-shadow:none}
+.readprog{position:absolute;left:0;right:0;bottom:0;height:6px;background:rgba(0,0,0,.12);z-index:3}
+.readprog i{display:block;height:100%;width:0;background:var(--coral,#ff6b5b)}

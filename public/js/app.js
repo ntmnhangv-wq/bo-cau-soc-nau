@@ -363,7 +363,16 @@
 
     // audio
     const play = $("#play"), seek = $("#seek"), time = $("#time"), note = $("#anote");
-    const setPlayUI = (p) => { playing = p; play.innerHTML = p ? ICON.pause : ICON.play; play.setAttribute("aria-label", p ? "Tạm dừng" : "Phát"); };
+    // nút đọc ngay trên tranh
+    const stageEl = $("#cv .stage");
+    stageEl.insertAdjacentHTML("beforeend", `<button class="readbtn" id="readbtn" type="button"></button><div class="readprog" aria-hidden="true"><i id="readbar"></i></div>`);
+    const rb = $("#readbtn");
+    const setPlayUI = (p) => {
+      playing = p; play.innerHTML = p ? ICON.pause : ICON.play; play.setAttribute("aria-label", p ? "Tạm dừng" : "Phát");
+      rb.innerHTML = p ? "⏸ Tạm dừng" : "🔊 Đọc cho mình nghe"; rb.setAttribute("aria-pressed", String(p)); rb.classList.toggle("on", p);
+      if (p) rafLoop(); 
+    };
+    const rafLoop = () => { if (!playing) return; syncImage(); const b = $("#readbar"); if (b && au.duration) b.style.width = (au.currentTime / au.duration) * 100 + "%"; requestAnimationFrame(rafLoop); };
     const loadTrack = (t) => {
       track = t; lastIdx = -1; stopAudio(); setPlayUI(false); note.hidden = true;
       au.src = "audio/" + t + "-" + n + ".mp3"; au.preload = "metadata"; au.playbackRate = S.speed; au.volume = S.vol;
@@ -386,8 +395,11 @@
       note.innerHTML = `Audio ${lbl} của chương này chưa tải được (có thể chưa có file hoặc đang mất mạng). ${ch.driveAudio[track] ? `<a href="${ch.driveAudio[track]}" target="_blank" rel="noopener">Nghe trên Google Drive ↗</a>` : ""}`;
     };
     au.onpause = () => setPlayUI(false);
-    au.onplay = () => setPlayUI(true);
+    au.onplay = () => { lastIdx = -1; setPlayUI(true); };
+    au.onseeked = () => { lastIdx = -1; syncImage(); };
     play.onclick = () => { if (au.paused) { note.hidden = true; au.play().catch(() => {}); } else au.pause(); };
+    rb.onclick = (e) => { e.stopPropagation(); play.onclick(); };
+    rb.onpointerdown = (e) => e.stopPropagation(); rb.onpointerup = (e) => e.stopPropagation();
     seek.oninput = () => { dragging = true; time.textContent = fmt(seek.value) + " / " + fmt(au.duration); };
     seek.onchange = () => { au.currentTime = +seek.value; dragging = false; };
     $("#vol").oninput = (e) => { S.vol = +e.target.value; au.volume = S.vol; save(); };
@@ -395,7 +407,7 @@
     $$("[data-track]").forEach((b) => (b.onclick = () => { if (b.dataset.track !== track) loadTrack(b.dataset.track); }));
     function syncImage() {
       const pts = ch.sync && ch.sync[track];
-      if (!pts || !S.autoSync || !curViewer || (au.paused && au.currentTime < 0.2)) return;
+      if (!pts || !S.autoSync || !curViewer || (au.paused && au.currentTime < 0.05)) return;
       let idx = 0; for (const pt of pts) { if (au.currentTime >= pt[0]) idx = pt[1]; else break; }
       if (idx !== lastIdx) { lastIdx = idx; curViewer.set(idx); }
     }
@@ -588,7 +600,7 @@
   function route() {
     if (cleanup) { cleanup(); cleanup = null; }
     stopAudio(); lbClose(); curViewer = null;
-    au.onerror = au.onended = au.onpause = au.onplay = au.ontimeupdate = au.onloadedmetadata = null;
+    au.onerror = au.onended = au.onpause = au.onplay = au.ontimeupdate = au.onloadedmetadata = au.onseeked = null;
     const h = (location.hash || "#/").replace(/^#\/?/, "").split("/");
     let name = "home", arg;
     switch (h[0]) {
