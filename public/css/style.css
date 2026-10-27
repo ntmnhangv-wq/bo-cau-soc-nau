@@ -516,3 +516,5 @@ main:focus,main:focus-visible,#main:focus{outline:none}
 .help .hbody ul,.help .hbody ol{padding-left:20px;margin:6px 0}.help .hbody li{margin:6px 0}
 .hlink{font-weight:800;color:inherit}
 :root[data-theme=dark] .help .hsec{background-color:var(--card);color:var(--ink)}
+@media (max-width:420px){.topbar .in{gap:5px;padding:6px 10px}.topbar .navbtn{padding:5px 0;width:42px;min-width:42px;justify-content:center}.topbar .brand span{font-size:.92rem;white-space:nowrap}.topbar .brand img{width:34px;height:34px}}
+@media (max-width:400px){.topbar .brand span{white-space:normal;line-height:1.1;font-size:.88rem}.topbar .brand{min-width:0;flex:1}}
