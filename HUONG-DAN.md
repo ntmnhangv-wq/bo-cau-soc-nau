@@ -33,3 +33,13 @@ Chép 5 file vào `public/audio/` đặt tên `vi-1.mp3` … `vi-5.mp3` rồi de
 5. Học sinh nhập **Mã lớp** (ví dụ `6/6`) khi làm thử thách. Bảng xếp hạng ẩn danh hiện ở mục *Bảng xếp hạng lớp*.
 - Trang tính `KetQua` có thêm 3 cột: Mã lớp, Chuỗi đúng dài nhất, Mã đố.
 - Nếu chưa cập nhật Apps Script, các chức năng khác vẫn chạy; riêng bảng xếp hạng sẽ báo "chưa được bật".
+
+## 4. Trang Quản trị (xem thống kê trực tiếp trong app)
+
+Cần làm một lần sau khi dán Code.gs mới:
+1. Mở Apps Script → **Cài đặt dự án** (biểu tượng bánh răng) → mục **Thuộc tính tập lệnh** → **Thêm thuộc tính**: tên `ADMIN_PW`, giá trị là mật khẩu bạn chọn → Lưu.
+2. **Triển khai → Quản lý bản triển khai → ✏️ → Phiên bản mới → Triển khai** (địa chỉ /exec giữ nguyên).
+3. Trong app: **Giới thiệu → 🔒 Quản trị** (hoặc `…/#/quan-tri`), nhập mật khẩu.
+
+Trang cho xem: lượt truy cập, số thiết bị, lượt làm thử thách, điểm trung bình, biểu đồ 14 ngày, phân bố điểm, tỉ lệ đúng theo chương, câu các em hay sai, bảng theo lớp (có nút tải CSV), đánh giá sao.
+Nhập sai 5 lần sẽ bị khóa khoảng 10 phút. Số liệu ẩn danh, không có tên học sinh.

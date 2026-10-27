@@ -518,3 +518,29 @@ main:focus,main:focus-visible,#main:focus{outline:none}
 :root[data-theme=dark] .help .hsec{background-color:var(--card);color:var(--ink)}
 @media (max-width:420px){.topbar .in{gap:5px;padding:6px 10px}.topbar .navbtn{padding:5px 0;width:42px;min-width:42px;justify-content:center}.topbar .brand span{font-size:.92rem;white-space:nowrap}.topbar .brand img{width:34px;height:34px}}
 @media (max-width:400px){.topbar .brand span{white-space:normal;line-height:1.1;font-size:.88rem}.topbar .brand{min-width:0;flex:1}}
+
+/* v21: quản trị */
+.adm .card{margin:12px 0}
+.adm h3{margin:0 0 8px}
+.admlogin{max-width:420px;margin:0 auto}
+.admlogin input{display:block;width:100%;margin-top:6px;padding:12px;font:inherit;border:3px solid var(--line);border-radius:12px;min-height:46px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:#fff;border:3px solid var(--line);border-radius:16px;padding:10px 6px;text-align:center;box-shadow:2px 2px 0 var(--line)}
+.kpi b{display:block;font:800 1.5rem var(--f-head)}.kpi span{font-size:.78rem;color:#5b6b78;font-weight:700}
+.abar{display:grid;grid-template-columns:78px 1fr 64px;gap:8px;align-items:center;margin:6px 0;font-weight:700;font-size:.9rem}
+.abar .at{background:#e8edf2;border-radius:99px;height:14px;overflow:hidden}.abar .at i{display:block;height:100%;background:var(--sky,#4aa3df);border-radius:99px}
+.abar .at i.g{background:#43a56a}.abar .at i.y{background:#f7b731}.abar .at i.r{background:#e8604c}
+.abar .avl{text-align:right;white-space:nowrap}
+.dchart{display:flex;gap:3px;align-items:flex-end;height:130px}
+.dc{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%}
+.dcb{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:1px}
+.dcb i{display:block;width:45%;border-radius:3px 3px 0 0;min-height:2px}
+.dcb i.v,.legend i.v{background:#4aa3df}.dcb i.p,.legend i.p{background:#f7b731}
+.dc span{font-size:.58rem;color:#5b6b78;writing-mode:vertical-rl;transform:rotate(180deg)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin:0 4px 0 10px;vertical-align:-1px}
+.hardq{padding-left:20px}.hardq li{margin:8px 0}
+.tblwrap{overflow-x:auto}.adtbl{width:100%;border-collapse:collapse;font-size:.92rem}
+.adtbl th,.adtbl td{padding:7px 8px;border-bottom:2px solid #e3e8ee;text-align:center}.adtbl th:first-child,.adtbl td:first-child{text-align:left;font-weight:800}
+.admlink{color:inherit;font-size:.85rem;opacity:.7}
+:root[data-theme=dark] :is(.kpi,.admlogin input){background-color:var(--card);color:var(--ink)}
+:root[data-theme=dark] .abar .at{background:#2a3547}

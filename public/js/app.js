@@ -66,7 +66,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "20", date: "27/10/2026", note: "Đổi Dinh Độc Lập thành Dinh Thống Nhất, reorganise thành reorganize" };
+  const APP_VERSION = { v: "21", date: "27/10/2026", note: "Thêm trang Quản trị: thống kê trực tiếp trong app" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -809,6 +809,7 @@
         ${rateHTML()}
         <details class="poster-d"><summary>Xem thêm về dự án (poster)</summary><img src="img/poster.jpg" alt="Poster dự án Bồ Câu và Sóc Nâu" loading="lazy"></details>
         <div class="row"><a class="btn alt sm" href="#/huong-dan">❓ Hướng dẫn sử dụng</a><a class="btn alt sm" href="#/">Về trang chủ</a></div>
+        <p class="note" style="text-align:center;margin:6px 0 0"><a class="admlink" href="#/quan-tri">🔒 Quản trị</a></p>
       </div></section>`;
     mountRate();
   };
@@ -831,6 +832,68 @@
       ${sec("🛠", "Gặp sự cố?", `<ul><li><b>Không nghe được tiếng</b>: kiểm tra nút gạt âm thanh, âm lượng điện thoại và nút 🔊 trên thanh phát.</li><li><b>App chưa cập nhật</b>: tắt hẳn app rồi mở lại. Cuối trang có dòng <i>Phiên bản…</i> để đối chiếu.</li><li><b>Tranh lật chưa khớp giọng đọc</b>: tắt nút tự lật và lật tay, rồi báo thầy cô để chỉnh.</li><li><b>Chưa có bảng xếp hạng</b>: cần có mạng và đã nhập tên lớp.</li></ul>`)}
       <div class="row c" style="margin-top:14px"><a class="btn" href="#/muc-luc">☰ Vào mục lục</a><a class="btn alt" href="#/">Về trang chủ</a></div>
     </section>`;
+  };
+
+
+  /* Trang Quản trị – thống kê trực tiếp (mật khẩu kiểm tra ở Google Apps Script) */
+  views.admin = () => {
+    const SK = "bcsn.adm";
+    const getPw = () => { try { return sessionStorage.getItem(SK) || ""; } catch (e) { return ""; } };
+    const setPw = (v) => { try { v ? sessionStorage.setItem(SK, v) : sessionStorage.removeItem(SK); } catch (e) {} };
+    main.innerHTML = `<section class="view adm"><div class="title-wrap"><span class="kicker">Quản trị</span><h1>Thống kê thử thách</h1><p class="note">Chỉ thầy cô xem. Số liệu ẩn danh, lấy từ Google Sheets.</p></div><div id="admbox"></div></section>`;
+    const box = $("#admbox");
+    const bar = (pct, label, val, cls) => `<div class="abar"><span class="al">${esc(label)}</span><span class="at"><i class="${cls || ""}" style="width:${Math.max(0, Math.min(100, pct))}%"></i></span><span class="avl">${esc(val)}</span></div>`;
+    const login = (msg) => {
+      box.innerHTML = `<form class="card admlogin" id="admf"><label>Mật khẩu quản trị<input id="admpw" type="password" autocomplete="current-password" required></label><p class="note warn" id="admmsg" ${msg ? "" : "hidden"}>${esc(msg || "")}</p><div class="row c"><button class="btn" type="submit">🔓 Xem thống kê</button></div></form>`;
+      $("#admf").onsubmit = (e) => { e.preventDefault(); setPw($("#admpw").value.trim()); load(); };
+    };
+    async function load() {
+      if (!CFG.SHEETS_URL) { box.innerHTML = `<div class="card">Chưa cấu hình địa chỉ Google Sheets cho app.</div>`; return; }
+      const pw = getPw(); if (!pw) { login(); return; }
+      box.innerHTML = `<div class="card">⏳ Đang tải số liệu…</div>`;
+      let j = null;
+      try { const r = await fetch(CFG.SHEETS_URL + "?action=admin&pw=" + encodeURIComponent(pw) + "&t=" + Date.now(), { cache: "no-store" }); j = await r.json(); } catch (e) { box.innerHTML = `<div class="card">Không kết nối được. Kiểm tra mạng rồi <button class="btn sm" id="admretry" type="button">Thử lại</button></div>`; $("#admretry").onclick = load; return; }
+      if (!j || !j.ok) {
+        setPw("");
+        const m = { badpw: "Mật khẩu chưa đúng.", locked: "Nhập sai nhiều lần. Chờ khoảng 10 phút rồi thử lại.", nopw: "Chưa đặt mật khẩu ở Apps Script (thuộc tính ADMIN_PW)." }[j && j.error] || "Chưa có tính năng này trên Apps Script. Hãy dán Code.gs mới và triển khai phiên bản mới (xem HUONG-DAN.md).";
+        login(m); return;
+      }
+      render(j);
+    }
+    function render(j) {
+      const days = j.days || [], mx = Math.max(1, ...days.map((d) => Math.max(d.v, d.p)));
+      const qs = D.quiz.map((q, i) => ({ i, ch: q.ch, q: q.q, p: j.perQ[i] })).filter((x) => x.p !== null);
+      const hard = qs.slice().sort((a, b) => a.p - b.p).slice(0, 3);
+      const chap = [1, 2, 3, 4, 5].map((c) => { const l = qs.filter((x) => x.ch === c); return { c, p: l.length ? Math.round(l.reduce((a, x) => a + x.p, 0) / l.length) : null }; });
+      const bt = j.bucket || [0, 0, 0], bs = Math.max(1, bt[0] + bt[1] + bt[2]);
+      const rd = (j.rating && j.rating.dist) || [0, 0, 0, 0, 0], rm = Math.max(1, ...rd);
+      const mm = (sec) => (sec ? Math.floor(sec / 60) + " phút " + (sec % 60) + " giây" : "–");
+      box.innerHTML = `
+        <div class="row c" style="margin-bottom:10px"><button class="btn alt sm" id="admref" type="button">🔄 Cập nhật</button><button class="btn alt sm" id="admout" type="button">🔒 Thoát</button></div>
+        <p class="note" style="text-align:center">Cập nhật lúc ${esc(j.at || "")}</p>
+        <div class="kpis">
+          <div class="kpi"><b>${j.visits}</b><span>Lượt truy cập</span></div>
+          <div class="kpi"><b>${j.devices}</b><span>Thiết bị</span></div>
+          <div class="kpi"><b>${j.plays}</b><span>Lượt làm thử thách</span></div>
+          <div class="kpi"><b>${j.players}</b><span>Em đã làm</span></div>
+          <div class="kpi"><b>${j.avgScore}</b><span>Điểm TB /10</span></div>
+          <div class="kpi"><b>${j.rating.avg || "–"}★</b><span>${j.rating.n} đánh giá</span></div>
+        </div>
+        <div class="card"><h3>📅 14 ngày gần nhất</h3><div class="dchart" role="img" aria-label="Biểu đồ lượt truy cập và lượt làm thử thách 14 ngày">${days.map((d) => `<div class="dc"><div class="dcb"><i class="v" style="height:${Math.round(100 * d.v / mx)}%" title="${d.v} lượt truy cập"></i><i class="p" style="height:${Math.round(100 * d.p / mx)}%" title="${d.p} lượt làm"></i></div><span>${esc(d.d.slice(0, 5))}</span></div>`).join("")}</div><p class="note legend"><i class="v"></i> Truy cập <i class="p"></i> Làm thử thách</p></div>
+        <div class="card"><h3>🎯 Phân bố điểm</h3>${bar(100 * bt[2] / bs, "8–10 điểm", bt[2] + " lượt", "g")}${bar(100 * bt[1] / bs, "5–7 điểm", bt[1] + " lượt", "y")}${bar(100 * bt[0] / bs, "Dưới 5", bt[0] + " lượt", "r")}<p class="note">Thời gian làm bài trung bình: ${mm(j.avgSec)}</p></div>
+        <div class="card"><h3>📚 Tỉ lệ đúng theo chương</h3>${chap.map((c) => bar(c.p || 0, "Chương " + c.c, c.p === null ? "–" : c.p + "%", c.p !== null && c.p < 50 ? "r" : c.p !== null && c.p < 75 ? "y" : "g")).join("")}</div>
+        ${hard.length ? `<div class="card"><h3>⚠️ Câu các em hay sai</h3><ol class="hardq">${hard.map((x) => `<li><b>${x.p}% đúng</b> · Chương ${x.ch}<br>${esc(x.q)}</li>`).join("")}</ol><p class="note">Gợi ý ôn lại các nội dung này trên lớp.</p></div>` : ""}
+        <div class="card"><h3>🏫 Theo lớp</h3>${j.classes.length ? `<div class="tblwrap"><table class="adtbl"><thead><tr><th>Lớp</th><th>Lượt làm</th><th>Số em*</th><th>Điểm TB</th><th>Cao nhất</th></tr></thead><tbody>${j.classes.map((c) => `<tr><td>${esc(c.c)}</td><td>${c.n}</td><td>${c.devs}</td><td>${c.avg}</td><td>${c.best}</td></tr>`).join("")}</tbody></table></div><p class="note">*Số thiết bị đã làm (mỗi em thường dùng một thiết bị).</p>` : `<p class="note">Chưa có lớp nào nhập mã lớp.</p>`}</div>
+        <div class="card"><h3>⭐ Đánh giá</h3>${[5, 4, 3, 2, 1].map((s) => bar(100 * rd[s - 1] / rm, s + " sao", rd[s - 1] + "", "y")).join("")}</div>
+        <div class="row c"><button class="btn alt sm" id="admcsv" type="button">⬇️ Tải bảng theo lớp (CSV)</button></div>`;
+      $("#admref").onclick = load; $("#admout").onclick = () => { setPw(""); login(); };
+      $("#admcsv").onclick = () => {
+        const rows = [["Lớp", "Lượt làm", "Số thiết bị", "Điểm TB", "Cao nhất"]].concat(j.classes.map((c) => [c.c, c.n, c.devs, c.avg, c.best]));
+        const csv = "\ufeff" + rows.map((r) => r.map((x) => '"' + String(x).replace(/"/g, '""') + '"').join(",")).join("\r\n");
+        const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); a.download = "thong-ke-theo-lop.csv"; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      };
+    }
+    load();
   };
 
   /* ---------- cỡ chữ + bảng nghĩa từ vựng ---------- */
@@ -1006,7 +1069,7 @@
   }
 
   /* ---------- bộ định tuyến ---------- */
-  const titles = { home: "Bồ Câu & Sóc Nâu – TP. Hồ Chí Minh, thành phố tôi yêu", toc: "Mục lục", meet: "Làm quen", book: "Đọc toàn bộ truyện", end: "Hẹn gặp lại", quiz: "Thử thách", result: "Kết quả", about: "Giới thiệu", passport: "Hộ chiếu khám phá", rank: "Bảng xếp hạng lớp", review: "Ôn từ vựng", help: "Hướng dẫn sử dụng" };
+  const titles = { home: "Bồ Câu & Sóc Nâu – TP. Hồ Chí Minh, thành phố tôi yêu", toc: "Mục lục", meet: "Làm quen", book: "Đọc toàn bộ truyện", end: "Hẹn gặp lại", quiz: "Thử thách", result: "Kết quả", about: "Giới thiệu", passport: "Hộ chiếu khám phá", rank: "Bảng xếp hạng lớp", review: "Ôn từ vựng", help: "Hướng dẫn sử dụng", admin: "Quản trị" };
   function route() {
     if (cleanup) { cleanup(); cleanup = null; }
     stopAudio(); lbClose(); curViewer = null; hideWord();
@@ -1027,6 +1090,7 @@
       case "xep-hang": name = "rank"; break;
       case "on-tu": name = "review"; break;
       case "huong-dan": name = "help"; break;
+      case "quan-tri": name = "admin"; break;
       default: name = "home";
     }
     if (name === "chapter" && arg >= 1 && arg <= 5 && !canOpen(arg)) { const f = firstOpen(); toast("🔒 Hãy hoàn thành Chương " + f + " trước nhé!"); location.replace("#/chuong/" + f); return; }
