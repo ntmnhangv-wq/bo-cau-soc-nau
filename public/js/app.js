@@ -66,8 +66,8 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "18", date: "27/10/2026", note: "Nút Hướng dẫn trên thanh đầu trang" };
-  (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div><a class="hlink" href="#/huong-dan">❓ Hướng dẫn sử dụng</a></div><div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
+  const APP_VERSION = { v: "19", date: "27/10/2026", note: "Gỡ lối tắt Hướng dẫn ở chân trang và mục lục" };
+  (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
   const THEME_KEY = "bcsn.theme";
@@ -366,7 +366,6 @@
         <a class="btn sm" href="#/thu-thach">⭐ Thử thách nhớ nhanh</a>
         <a class="btn alt sm" href="#/on-tu">🔤 Ôn từ vựng${needReview().length ? " (" + needReview().length + ")" : ""}</a>
         <a class="btn alt sm" href="#/xep-hang">🏆 Bảng xếp hạng lớp</a>
-        <a class="btn alt sm" href="#/huong-dan">❓ Hướng dẫn sử dụng</a>
       </div></div></section>`;
   };
 
