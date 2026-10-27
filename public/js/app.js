@@ -66,8 +66,8 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "14", date: "26/10/2026", note: "Bỏ cuộn dọc, thêm hiệu ứng lật trang, sửa lỗi không bấm được menu" };
-  (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
+  const APP_VERSION = { v: "17", date: "26/10/2026", note: "Thêm trang Hướng dẫn sử dụng" };
+  (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div><a class="hlink" href="#/huong-dan">❓ Hướng dẫn sử dụng</a></div><div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
   const THEME_KEY = "bcsn.theme";
@@ -366,6 +366,7 @@
         <a class="btn sm" href="#/thu-thach">⭐ Thử thách nhớ nhanh</a>
         <a class="btn alt sm" href="#/on-tu">🔤 Ôn từ vựng${needReview().length ? " (" + needReview().length + ")" : ""}</a>
         <a class="btn alt sm" href="#/xep-hang">🏆 Bảng xếp hạng lớp</a>
+        <a class="btn alt sm" href="#/huong-dan">❓ Hướng dẫn sử dụng</a>
       </div></div></section>`;
   };
 
@@ -396,11 +397,17 @@
     let lang = S.lang, track = "vi", playing = false, dragging = false;
     const nextHref = n < 5 ? "#/chuong/" + (n + 1) : "#/ket-thuc";
     main.innerHTML = `<section class="view">
+      <div class="intro" id="intro"><span class="kicker">Chương ${n}</span><h1>${esc(ch.vi)}</h1><p class="e" lang="en">${esc(ch.en)}</p>
+        <div class="introhd">💬 Hai bạn dẫn vào chương</div>
+        <div id="say"></div>
+        <div class="introfoot">${langSeg(lang)}<button class="btn go" type="button" id="introgo">Bắt đầu đọc chương →</button></div>
+      </div>
+      <div id="chmain" hidden>
       <div class="chhead"><span class="kicker">Chương ${n}</span><h1>${esc(ch.vi)}</h1><p class="e" lang="en">${esc(ch.en)}</p></div>
       ${viewerHTML("cv")}
 
-      <div class="panel"><div class="row" style="justify-content:space-between"><h2>💬 Lời của hai bạn</h2><div class="row" style="gap:8px">${langSeg(lang)}<span class="fsz" role="group" aria-label="Cỡ chữ"><button type="button" id="fsm" aria-label="Chữ nhỏ lại">A−</button><button type="button" id="fsp" aria-label="Chữ to lên">A+</button></span></div></div>
-        <div id="say"></div>
+      <div class="tools" role="toolbar" aria-label="Ngôn ngữ và cỡ chữ">${langSeg(lang)}<span class="fsz" role="group" aria-label="Cỡ chữ"><button type="button" id="fsm" aria-label="Chữ nhỏ lại">A−</button><button type="button" id="fsp" aria-label="Chữ to lên">A+</button></span></div>
+      <div class="panel talk">
         <details class="full" id="full" open><summary>📖 Lời kể của chương <small>(sáng lên theo giọng đọc)</small></summary><div id="fulltxt"></div></details>
       </div>
 
@@ -416,7 +423,9 @@
         <ul class="reqlist"><li data-r="img"></li><li data-r="vocab"></li><li data-r="audio"></li></ul>
         <div class="bar" aria-hidden="true"><i id="reqbar" style="width:0"></i></div><p class="note" id="reqmsg" style="margin:6px 0 0"></p></div></div>
       <div class="endnav"><a class="btn alt" href="#/muc-luc">☰ Về mục lục</a><a class="btn locked" id="nextbtn" href="${nextHref}">${n < 5 ? "Chương tiếp theo →" : "Kết thúc hành trình →"}</a></div>
+      </div>
     </section>`;
+    $("#introgo").onclick = () => { $("#intro").hidden = true; $("#chmain").hidden = false; window.scrollTo(0, 0); const h = $("#chmain .chhead h1"); if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); } };
 
     // tranh + lưu vị trí + tem
     mountViewer("cv", ch.images, S.pos[n] || 0, (i) => {
@@ -800,9 +809,29 @@
         <a class="btn alt" href="${D.links.project}" target="_blank" rel="noopener">📁 Xem hồ sơ dự án và poster</a></div>
         ${rateHTML()}
         <details class="poster-d"><summary>Xem thêm về dự án (poster)</summary><img src="img/poster.jpg" alt="Poster dự án Bồ Câu và Sóc Nâu" loading="lazy"></details>
-        <div class="row"><a class="btn alt sm" href="#/">Về trang chủ</a></div>
+        <div class="row"><a class="btn alt sm" href="#/huong-dan">❓ Hướng dẫn sử dụng</a><a class="btn alt sm" href="#/">Về trang chủ</a></div>
       </div></section>`;
     mountRate();
+  };
+
+
+  /* Hướng dẫn sử dụng */
+  views.help = () => {
+    const sec = (ic, t, body, open) => `<details class="hsec"${open ? " open" : ""}><summary><span class="hic" aria-hidden="true">${ic}</span>${t}</summary><div class="hbody">${body}</div></details>`;
+    main.innerHTML = `<section class="view help">
+      <div class="title-wrap"><span class="kicker">Hướng dẫn</span><h1>Cách dùng Bồ Câu &amp; Sóc Nâu</h1><p class="note">Chạm vào từng mục để xem. Dành cho học sinh và thầy cô.</p></div>
+      ${sec("🚀", "Bắt đầu nhanh", `<ol><li>Vào <b>Mục lục</b> (nút ☰ trên cùng), chọn <b>Chương 1</b>.</li><li>Đọc lời dẫn của Sóc Nâu và Bồ Câu, bấm <b>Bắt đầu đọc chương</b>.</li><li>Bấm <b>🔊 Đọc cho mình nghe</b> trên tranh. Giọng đọc chạy tới đâu, tranh tự lật tới đó.</li><li>Xem hết tranh, lật hết thẻ từ vựng, nghe hết một bản audio để mở <b>chương tiếp theo</b>.</li></ol>`, true)}
+      ${sec("🖼", "Xem tranh và nghe đọc", `<ul><li><b>▶ / ⏸</b>: phát hoặc dừng. Kéo thanh thời gian để tua.</li><li><b>1×</b>: đổi tốc độ đọc. <b>Việt / English</b>: đổi giọng đọc. <b>🔊</b>: chỉnh âm lượng.</li><li><b>Nút hình bức tranh</b>: bật/tắt <i>tự lật trang theo giọng đọc</i>. Tắt đi nếu bạn muốn tự lật.</li><li><b>Lật tay</b>: bấm Trước / Sau hoặc vuốt sang trái, phải. Máy tính dùng phím ← →.</li><li><b>Phóng to</b>: chạm vào tranh, hoặc bấm nút toàn màn hình ⛶ ở góc phải thanh phát.</li><li>Khi đang phát, thanh điều khiển tự ẩn sau vài giây. Chạm vào tranh để hiện lại.</li></ul>`)}
+      ${sec("💬", "Lời của hai bạn và lời kể", `<ul><li>Đầu mỗi chương, Sóc Nâu và Bồ Câu nói vài câu dẫn vào bài. Chọn <b>Tiếng Việt / English / Song ngữ</b> ngay tại đó.</li><li>Phần <b>Lời kể của chương</b> sáng lên đúng đoạn đang được đọc.</li><li><b>A− / A+</b>: chỉnh cỡ chữ cho dễ đọc.</li></ul>`)}
+      ${sec("🔤", "Từ vựng Anh–Việt", `<ul><li>Trong lời tiếng Anh, từ có <b>gạch chấm đỏ</b> là từ vựng. <b>Chạm vào</b> để xem nghĩa tiếng Việt và nghe phát âm.</li><li>Cuối chương có các <b>thẻ từ vựng</b>: chạm để lật xem nghĩa, bấm loa để nghe.</li><li>Từ bạn đã chạm được lưu lại để ôn sau.</li></ul>`)}
+      ${sec("🎮", "Ôn từ vựng", `<p>Vào <b>Mục lục → 🔤 Ôn từ vựng</b>. Có hai trò chơi:</p><ul><li><b>Nghe rồi chọn</b>: nghe một từ, chọn nghĩa đúng.</li><li><b>Ghép cặp</b>: nối từ tiếng Anh với nghĩa tiếng Việt.</li></ul><p>Từ nào trả lời sai sẽ được hỏi lại nhiều hơn. Số trong ngoặc là số từ đang cần ôn.</p>`)}
+      ${sec("⭐", "Thử thách nhớ nhanh", `<ul><li>Trả lời câu hỏi về thành phố, có <b>đồng hồ đếm giờ</b> và <b>chuỗi đúng liên tiếp</b> để cộng thêm điểm.</li><li><b>Mã đố</b>: nhập cùng một mã với bạn bè để thi chung một đề. Sau khi làm xong, bạn nhận mã mới để gửi bạn.</li><li>Nhập <b>lớp</b> của mình để ghi tên lên <b>🏆 Bảng xếp hạng lớp</b> (chỉ hiện biệt danh, không lộ thông tin cá nhân).</li><li>Bấm <b>🖼 Tạo ảnh thành tích</b> để lưu hoặc chia sẻ kết quả.</li></ul>`)}
+      ${sec("🏅", "Điểm kinh nghiệm, cấp độ và hộ chiếu", `<ul><li>Đọc chương, ôn từ, làm thử thách đều được <b>điểm kinh nghiệm</b> và lên <b>cấp</b>.</li><li>Hoàn thành mỗi chương được một <b>tem</b> trong <b>Hộ chiếu khám phá</b> (nút thứ hai trên cùng).</li><li>Trên <b>bản đồ hành trình</b> ở trang chủ, các điểm sáng dần khi bạn đi tiếp.</li></ul>`)}
+      ${sec("📱", "Cài app và dùng ngoại tuyến", `<ul><li><b>iPhone (Safari)</b>: bấm nút Chia sẻ → <b>Thêm vào Màn hình chính</b>.</li><li><b>Android (Chrome)</b>: menu ⋮ → <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>.</li><li>Sau khi mở một lần có mạng, nhiều phần vẫn xem được khi mất mạng. Điểm sẽ gửi lên khi có mạng lại.</li><li><b>Nền tối</b>: nút 🌙 ở cuối trang, dễ nhìn khi đọc buổi tối.</li></ul>`)}
+      ${sec("🧑‍🏫", "Gợi ý cho thầy cô", `<ul><li>Cho cả lớp cùng thi một <b>mã đố</b>, nhập đúng tên lớp để xem bảng xếp hạng chung.</li><li>Dùng chế độ <b>Song ngữ</b> khi dạy học kết hợp Tiếng Anh; <b>Tiếng Việt</b> khi cần tập trung nội dung.</li><li>Nên chiếu tranh ở chế độ toàn màn hình, bật tự lật trang để cả lớp nghe và xem.</li><li>Học sinh dùng chung một máy: điểm lưu theo từng máy và trình duyệt.</li></ul>`)}
+      ${sec("🛠", "Gặp sự cố?", `<ul><li><b>Không nghe được tiếng</b>: kiểm tra nút gạt âm thanh, âm lượng điện thoại và nút 🔊 trên thanh phát.</li><li><b>App chưa cập nhật</b>: tắt hẳn app rồi mở lại. Cuối trang có dòng <i>Phiên bản…</i> để đối chiếu.</li><li><b>Tranh lật chưa khớp giọng đọc</b>: tắt nút tự lật và lật tay, rồi báo thầy cô để chỉnh.</li><li><b>Chưa có bảng xếp hạng</b>: cần có mạng và đã nhập tên lớp.</li></ul>`)}
+      <div class="row c" style="margin-top:14px"><a class="btn" href="#/muc-luc">☰ Vào mục lục</a><a class="btn alt" href="#/">Về trang chủ</a></div>
+    </section>`;
   };
 
   /* ---------- cỡ chữ + bảng nghĩa từ vựng ---------- */
@@ -978,7 +1007,7 @@
   }
 
   /* ---------- bộ định tuyến ---------- */
-  const titles = { home: "Bồ Câu & Sóc Nâu – TP. Hồ Chí Minh, thành phố tôi yêu", toc: "Mục lục", meet: "Làm quen", book: "Đọc toàn bộ truyện", end: "Hẹn gặp lại", quiz: "Thử thách", result: "Kết quả", about: "Giới thiệu", passport: "Hộ chiếu khám phá", rank: "Bảng xếp hạng lớp", review: "Ôn từ vựng" };
+  const titles = { home: "Bồ Câu & Sóc Nâu – TP. Hồ Chí Minh, thành phố tôi yêu", toc: "Mục lục", meet: "Làm quen", book: "Đọc toàn bộ truyện", end: "Hẹn gặp lại", quiz: "Thử thách", result: "Kết quả", about: "Giới thiệu", passport: "Hộ chiếu khám phá", rank: "Bảng xếp hạng lớp", review: "Ôn từ vựng", help: "Hướng dẫn sử dụng" };
   function route() {
     if (cleanup) { cleanup(); cleanup = null; }
     stopAudio(); lbClose(); curViewer = null; hideWord();
@@ -998,6 +1027,7 @@
       case "ho-chieu": name = "passport"; break;
       case "xep-hang": name = "rank"; break;
       case "on-tu": name = "review"; break;
+      case "huong-dan": name = "help"; break;
       default: name = "home";
     }
     if (name === "chapter" && arg >= 1 && arg <= 5 && !canOpen(arg)) { const f = firstOpen(); toast("🔒 Hãy hoàn thành Chương " + f + " trước nhé!"); location.replace("#/chuong/" + f); return; }
