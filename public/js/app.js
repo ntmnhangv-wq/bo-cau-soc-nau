@@ -66,7 +66,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "21", date: "27/10/2026", note: "Thêm trang Quản trị: thống kê trực tiếp trong app" };
+  const APP_VERSION = { v: "23", date: "27/10/2026", note: "Gỡ lối vào Quản trị ở chân trang" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -809,7 +809,7 @@
         ${rateHTML()}
         <details class="poster-d"><summary>Xem thêm về dự án (poster)</summary><img src="img/poster.jpg" alt="Poster dự án Bồ Câu và Sóc Nâu" loading="lazy"></details>
         <div class="row"><a class="btn alt sm" href="#/huong-dan">❓ Hướng dẫn sử dụng</a><a class="btn alt sm" href="#/">Về trang chủ</a></div>
-        <p class="note" style="text-align:center;margin:6px 0 0"><a class="admlink" href="#/quan-tri">🔒 Quản trị</a></p>
+        <div class="tzone"><span class="tz-ic" aria-hidden="true">👩‍🏫</span><div class="tz-tx"><b>Khu vực dành cho thầy cô</b><span>Xem thống kê lượt truy cập, điểm và lớp</span></div><a class="btn sm tz-btn" href="#/quan-tri">🔒 Quản trị</a></div>
       </div></section>`;
     mountRate();
   };
@@ -831,6 +831,7 @@
       ${sec("🧑‍🏫", "Gợi ý cho thầy cô", `<ul><li>Cho cả lớp cùng thi một <b>mã đố</b>, nhập đúng tên lớp để xem bảng xếp hạng chung.</li><li>Dùng chế độ <b>Song ngữ</b> khi dạy học kết hợp Tiếng Anh; <b>Tiếng Việt</b> khi cần tập trung nội dung.</li><li>Nên chiếu tranh ở chế độ toàn màn hình, bật tự lật trang để cả lớp nghe và xem.</li><li>Học sinh dùng chung một máy: điểm lưu theo từng máy và trình duyệt.</li></ul>`)}
       ${sec("🛠", "Gặp sự cố?", `<ul><li><b>Không nghe được tiếng</b>: kiểm tra nút gạt âm thanh, âm lượng điện thoại và nút 🔊 trên thanh phát.</li><li><b>App chưa cập nhật</b>: tắt hẳn app rồi mở lại. Cuối trang có dòng <i>Phiên bản…</i> để đối chiếu.</li><li><b>Tranh lật chưa khớp giọng đọc</b>: tắt nút tự lật và lật tay, rồi báo thầy cô để chỉnh.</li><li><b>Chưa có bảng xếp hạng</b>: cần có mạng và đã nhập tên lớp.</li></ul>`)}
       <div class="row c" style="margin-top:14px"><a class="btn" href="#/muc-luc">☰ Vào mục lục</a><a class="btn alt" href="#/">Về trang chủ</a></div>
+      <div class="tzone"><span class="tz-ic" aria-hidden="true">👩‍🏫</span><div class="tz-tx"><b>Dành cho thầy cô</b><span>Trang quản trị xem thống kê</span></div><a class="btn sm tz-btn" href="#/quan-tri">🔒 Quản trị</a></div>
     </section>`;
   };
 

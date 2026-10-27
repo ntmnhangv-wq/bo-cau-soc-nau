@@ -544,3 +544,12 @@ main:focus,main:focus-visible,#main:focus{outline:none}
 .admlink{color:inherit;font-size:.85rem;opacity:.7}
 :root[data-theme=dark] :is(.kpi,.admlogin input){background-color:var(--card);color:var(--ink)}
 :root[data-theme=dark] .abar .at{background:#2a3547}
+
+/* v22: lối vào quản trị */
+.tzone{display:flex;align-items:center;gap:12px;margin:18px 0 4px;padding:12px 14px;background:#eef6ff;border:3px dashed var(--line);border-radius:18px}
+.tz-ic{font-size:2rem;line-height:1}
+.tz-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.tz-tx b{font:800 1rem var(--f-head)}.tz-tx span{font-size:.85rem;color:#5b6b78;font-weight:700}
+.tz-btn{white-space:nowrap;min-height:48px;padding:0 16px}
+.flink{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;font-weight:800;color:inherit;text-decoration:none;border:2.5px solid var(--line);border-radius:999px;background:#fff;margin:6px 0}
+:root[data-theme=dark] .tzone{background-color:#1b2a40}:root[data-theme=dark] .flink{background-color:var(--card);color:var(--ink)}:root[data-theme=dark] .tz-tx span{color:#9fb0c3}
+@media (max-width:420px){.tzone{flex-wrap:wrap}.tz-btn{width:100%;justify-content:center}}
