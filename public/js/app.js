@@ -66,7 +66,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "23", date: "27/10/2026", note: "Gỡ lối vào Quản trị ở chân trang" };
+  const APP_VERSION = { v: "25", date: "27/10/2026", note: "Điều chỉnh lời văn theo chủ app là học sinh; thêm mục Quyền riêng tư" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -702,7 +702,7 @@
       ${R.code ? `<div class="card codecard"><b>🎲 Mã đố của lượt này: <span class="code">${esc(R.code)}</span></b><p class="note" style="margin:4px 0 8px">Gửi mã này cho bạn bè. Bạn nhập vào ô “Mã đố” khi bắt đầu thì cả hai cùng thi một đề, cùng thứ tự đáp án.</p><button class="btn sm alt" id="cpcode" type="button">📋 Chép mã</button></div>` : ""}
       <div class="row c" style="margin-top:12px"><a class="btn leaf" href="#/xep-hang">🏆 ${S.cls ? "Xem xếp hạng lớp " + esc(S.cls) : "Xem bảng xếp hạng lớp"}</a><button class="btn alt" id="sharebtn" type="button">🖼 Tạo ảnh thành tích</button></div>
       <div id="sharebox"></div>
-      ${CFG.SHEETS_URL ? '<p class="note">Điểm được ghi ẩn danh (không có tên) để thầy cô thống kê.</p>' : ""}
+      ${CFG.SHEETS_URL ? '<p class="note">Điểm được ghi ẩn danh (không có tên) để nhóm tác giả thống kê phục vụ nghiên cứu.</p>' : ""}
       <div style="margin-top:16px">${rateHTML()}</div>
       <div class="row c" style="margin-top:20px"><button class="btn" id="again" type="button">↻ Chơi lại</button><a class="btn leaf" href="#/muc-luc">Khám phá tiếp</a><a class="btn alt" href="#/">Về trang chủ</a></div></section>`;
     $("#again").onclick = () => { S.lastScore = null; save(); location.hash = "#/thu-thach"; };
@@ -804,12 +804,14 @@
         <h1>Một cuốn sách, một tình yêu thành phố.</h1>
         <p>Bồ Câu và Sóc Nâu là hai người bạn đồng hành, đưa bạn khám phá lịch sử, địa lý, văn hóa và nhịp sống Thành phố Hồ Chí Minh qua tranh truyện, lời Việt - Anh và audio. Mỗi trang sách là một lời mời tìm hiểu và yêu hơn thành phố của chúng mình.</p>
         <div class="authors"><b>Tác giả</b><br>Nguyễn Trần Mai Trân, lớp 9/6<br>Lê Cao Di Quỳnh, lớp 9/7<br>Trường THCS Gò Vấp</div>
+        <p class="aidecl"><b>Khai báo sử dụng AI:</b> Mã nguồn ứng dụng được viết với sự hỗ trợ của AI (Claude, Anthropic) và được nhóm tác giả kiểm tra. Hình ảnh truyện do học sinh tự thực hiện.</p>
+        <details class="privacy"><summary>🔒 Quyền riêng tư</summary><p>App không hỏi họ tên. Khi bạn làm thử thách, app ghi ẩn danh: mã thiết bị ngẫu nhiên, mã lớp bạn nhập, điểm, thời gian và số sao đánh giá. Dữ liệu chỉ phục vụ nghiên cứu của nhóm tác giả, do nhóm tác giả và giáo viên hướng dẫn xem, không bán hay chia sẻ cho bên khác. Tiến độ đọc lưu ngay trên máy bạn; xóa dữ liệu trình duyệt là mất.</p></details>
         <div class="row"><a class="btn" href="${D.links.book}" target="_blank" rel="noopener">📘 Đọc sách gốc trên Google Drive</a>
         <a class="btn alt" href="${D.links.project}" target="_blank" rel="noopener">📁 Xem hồ sơ dự án và poster</a></div>
         ${rateHTML()}
         <details class="poster-d"><summary>Xem thêm về dự án (poster)</summary><img src="img/poster.jpg" alt="Poster dự án Bồ Câu và Sóc Nâu" loading="lazy"></details>
         <div class="row"><a class="btn alt sm" href="#/huong-dan">❓ Hướng dẫn sử dụng</a><a class="btn alt sm" href="#/">Về trang chủ</a></div>
-        <div class="tzone"><span class="tz-ic" aria-hidden="true">👩‍🏫</span><div class="tz-tx"><b>Khu vực dành cho thầy cô</b><span>Xem thống kê lượt truy cập, điểm và lớp</span></div><a class="btn sm tz-btn" href="#/quan-tri">🔒 Quản trị</a></div>
+        <div class="tzone"><span class="tz-ic" aria-hidden="true">📊</span><div class="tz-tx"><b>Khu vực quản trị</b><span>Dành cho nhóm tác giả và giáo viên hướng dẫn</span></div><a class="btn sm tz-btn" href="#/quan-tri">🔒 Quản trị</a></div>
       </div></section>`;
     mountRate();
   };
@@ -831,7 +833,7 @@
       ${sec("🧑‍🏫", "Gợi ý cho thầy cô", `<ul><li>Cho cả lớp cùng thi một <b>mã đố</b>, nhập đúng tên lớp để xem bảng xếp hạng chung.</li><li>Dùng chế độ <b>Song ngữ</b> khi dạy học kết hợp Tiếng Anh; <b>Tiếng Việt</b> khi cần tập trung nội dung.</li><li>Nên chiếu tranh ở chế độ toàn màn hình, bật tự lật trang để cả lớp nghe và xem.</li><li>Học sinh dùng chung một máy: điểm lưu theo từng máy và trình duyệt.</li></ul>`)}
       ${sec("🛠", "Gặp sự cố?", `<ul><li><b>Không nghe được tiếng</b>: kiểm tra nút gạt âm thanh, âm lượng điện thoại và nút 🔊 trên thanh phát.</li><li><b>App chưa cập nhật</b>: tắt hẳn app rồi mở lại. Cuối trang có dòng <i>Phiên bản…</i> để đối chiếu.</li><li><b>Tranh lật chưa khớp giọng đọc</b>: tắt nút tự lật và lật tay, rồi báo thầy cô để chỉnh.</li><li><b>Chưa có bảng xếp hạng</b>: cần có mạng và đã nhập tên lớp.</li></ul>`)}
       <div class="row c" style="margin-top:14px"><a class="btn" href="#/muc-luc">☰ Vào mục lục</a><a class="btn alt" href="#/">Về trang chủ</a></div>
-      <div class="tzone"><span class="tz-ic" aria-hidden="true">👩‍🏫</span><div class="tz-tx"><b>Dành cho thầy cô</b><span>Trang quản trị xem thống kê</span></div><a class="btn sm tz-btn" href="#/quan-tri">🔒 Quản trị</a></div>
+      <div class="tzone"><span class="tz-ic" aria-hidden="true">📊</span><div class="tz-tx"><b>Khu vực quản trị</b><span>Dành cho nhóm tác giả và giáo viên hướng dẫn</span></div><a class="btn sm tz-btn" href="#/quan-tri">🔒 Quản trị</a></div>
     </section>`;
   };
 
@@ -841,7 +843,7 @@
     const SK = "bcsn.adm";
     const getPw = () => { try { return sessionStorage.getItem(SK) || ""; } catch (e) { return ""; } };
     const setPw = (v) => { try { v ? sessionStorage.setItem(SK, v) : sessionStorage.removeItem(SK); } catch (e) {} };
-    main.innerHTML = `<section class="view adm"><div class="title-wrap"><span class="kicker">Quản trị</span><h1>Thống kê thử thách</h1><p class="note">Chỉ thầy cô xem. Số liệu ẩn danh, lấy từ Google Sheets.</p></div><div id="admbox"></div></section>`;
+    main.innerHTML = `<section class="view adm"><div class="title-wrap"><span class="kicker">Quản trị</span><h1>Thống kê thử thách</h1><p class="note">Chỉ nhóm tác giả và giáo viên hướng dẫn xem. Số liệu ẩn danh, lấy từ Google Sheets.</p></div><div id="admbox"></div></section>`;
     const box = $("#admbox");
     const bar = (pct, label, val, cls) => `<div class="abar"><span class="al">${esc(label)}</span><span class="at"><i class="${cls || ""}" style="width:${Math.max(0, Math.min(100, pct))}%"></i></span><span class="avl">${esc(val)}</span></div>`;
     const login = (msg) => {
