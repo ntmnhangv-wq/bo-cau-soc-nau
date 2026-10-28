@@ -89,31 +89,27 @@ function admin_(pw) {
   if (hit) return JSON.parse(hit);
   const tz = 'Asia/Ho_Chi_Minh', fmt = function (d) { return Utilities.formatDate(d, tz, 'dd/MM'); };
   const day = {}, days = [];
-  for (let i = 13; i >= 0; i--) { const k = fmt(new Date(Date.now() - i * 864e5)); day[k] = { d: k, v: 0, p: 0 }; days.push(k); }
+  const t0 = Utilities.parseDate('2026-10-26 12:00', tz, 'yyyy-MM-dd HH:mm').getTime();
+  for (let i = 0; i < 7; i++) { const k = fmt(new Date(t0 + i * 864e5)); day[k] = { d: k, v: 0, p: 0 }; days.push(k); }
   const vs = sheet_(VISIT, VISIT_H), vn = vs.getLastRow() - 1, devs = {};
   if (vn > 0) vs.getRange(2, 1, vn, 2).getValues().forEach(function (r) { devs[r[1]] = 1; const k = r[0] instanceof Date ? fmt(r[0]) : ''; if (day[k]) day[k].v++; });
   const rs = sheet_(RATE, RATE_H), rn = rs.getLastRow() - 1, dist = [0, 0, 0, 0, 0]; let rsum = 0;
   if (rn > 0) rs.getRange(2, 3, rn, 1).getValues().forEach(function (r) { const x = Number(r[0]) || 0; if (x >= 1 && x <= 5) { dist[x - 1]++; rsum += x; } });
-  const ss = sheet_(SCORE, SCORE_H), sn = ss.getLastRow() - 1, cls = {}, right = new Array(10).fill(0), tot = new Array(10).fill(0), bucket = [0, 0, 0];
+  const ss = sheet_(SCORE, SCORE_H), sn = ss.getLastRow() - 1, right = new Array(10).fill(0), tot = new Array(10).fill(0), bucket = [0, 0, 0];
   let ssum = 0, tsum = 0, tcnt = 0; const players = {};
   if (sn > 0) ss.getRange(2, 1, sn, 16).getValues().forEach(function (r) {
     const sc = Number(r[3]) || 0, sec = Number(r[4]) || 0, k = r[0] instanceof Date ? fmt(r[0]) : '';
     if (day[k]) day[k].p++;
     ssum += sc; bucket[sc >= 8 ? 2 : sc >= 5 ? 1 : 0]++; if (sec) { tsum += sec; tcnt++; } players[r[1]] = 1;
     for (let i = 0; i < 10; i++) { const a = r[5 + i]; if (a === 1 || a === 0 || a === '1' || a === '0') { tot[i]++; right[i] += Number(a); } }
-    const c = String(r[15] || '').trim() || '(chưa nhập lớp)';
-    const o = cls[c] || (cls[c] = { c: c, n: 0, s: 0, b: 0, d: {} });
-    o.n++; o.s += sc; if (sc > o.b) o.b = sc; o.d[r[1]] = 1;
   });
-  const classes = Object.keys(cls).map(function (k) { const o = cls[k]; return { c: o.c, n: o.n, devs: Object.keys(o.d).length, avg: Math.round(10 * o.s / o.n) / 10, best: o.b }; })
-    .sort(function (a, b) { return b.n - a.n; }).slice(0, 40);
   const res = {
     ok: true, at: Utilities.formatDate(new Date(), tz, 'HH:mm dd/MM/yyyy'),
     visits: Math.max(0, vn), devices: Object.keys(devs).length,
     rating: { n: Math.max(0, rn), avg: rn > 0 ? Math.round(10 * rsum / rn) / 10 : 0, dist: dist },
     plays: Math.max(0, sn), players: Object.keys(players).length, avgScore: sn > 0 ? Math.round(10 * ssum / sn) / 10 : 0, avgSec: tcnt ? Math.round(tsum / tcnt) : 0,
     bucket: bucket, perQ: right.map(function (x, i) { return tot[i] ? Math.round(100 * x / tot[i]) : null; }),
-    days: days.map(function (k) { return day[k]; }), classes: classes
+    days: days.map(function (k) { return day[k]; })
   };
   cache.put('adm', JSON.stringify(res), 20);
   return res;

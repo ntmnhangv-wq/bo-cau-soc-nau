@@ -66,7 +66,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "25", date: "27/10/2026", note: "Điều chỉnh lời văn theo chủ app là học sinh; thêm mục Quyền riêng tư" };
+  const APP_VERSION = { v: "26", date: "28/10/2026", note: "Thống kê quản trị 7 ngày từ 26/10, bỏ bảng theo lớp, đổi cách xưng hô thành bạn" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -864,7 +864,7 @@
       render(j);
     }
     function render(j) {
-      const days = j.days || [], mx = Math.max(1, ...days.map((d) => Math.max(d.v, d.p)));
+      const dl = j.days || [], di = dl.findIndex((d) => String(d.d).slice(0, 5) === "26/10"), days = di >= 0 ? dl.slice(di, di + 7) : dl.slice(-7), mx = Math.max(1, ...days.map((d) => Math.max(d.v, d.p)));
       const qs = D.quiz.map((q, i) => ({ i, ch: q.ch, q: q.q, p: j.perQ[i] })).filter((x) => x.p !== null);
       const hard = qs.slice().sort((a, b) => a.p - b.p).slice(0, 3);
       const chap = [1, 2, 3, 4, 5].map((c) => { const l = qs.filter((x) => x.ch === c); return { c, p: l.length ? Math.round(l.reduce((a, x) => a + x.p, 0) / l.length) : null }; });
@@ -878,23 +878,16 @@
           <div class="kpi"><b>${j.visits}</b><span>Lượt truy cập</span></div>
           <div class="kpi"><b>${j.devices}</b><span>Thiết bị</span></div>
           <div class="kpi"><b>${j.plays}</b><span>Lượt làm thử thách</span></div>
-          <div class="kpi"><b>${j.players}</b><span>Em đã làm</span></div>
+          <div class="kpi"><b>${j.players}</b><span>Bạn đã làm</span></div>
           <div class="kpi"><b>${j.avgScore}</b><span>Điểm TB /10</span></div>
           <div class="kpi"><b>${j.rating.avg || "–"}★</b><span>${j.rating.n} đánh giá</span></div>
         </div>
-        <div class="card"><h3>📅 14 ngày gần nhất</h3><div class="dchart" role="img" aria-label="Biểu đồ lượt truy cập và lượt làm thử thách 14 ngày">${days.map((d) => `<div class="dc"><div class="dcb"><i class="v" style="height:${Math.round(100 * d.v / mx)}%" title="${d.v} lượt truy cập"></i><i class="p" style="height:${Math.round(100 * d.p / mx)}%" title="${d.p} lượt làm"></i></div><span>${esc(d.d.slice(0, 5))}</span></div>`).join("")}</div><p class="note legend"><i class="v"></i> Truy cập <i class="p"></i> Làm thử thách</p></div>
+        <div class="card"><h3>📅 7 ngày (từ 26/10/2026)</h3><div class="dchart" role="img" aria-label="Biểu đồ lượt truy cập và lượt làm thử thách 7 ngày">${days.map((d) => `<div class="dc"><div class="dcb"><i class="v" style="height:${Math.round(100 * d.v / mx)}%" title="${d.v} lượt truy cập"></i><i class="p" style="height:${Math.round(100 * d.p / mx)}%" title="${d.p} lượt làm"></i></div><span>${esc(d.d.slice(0, 5))}</span></div>`).join("")}</div><p class="note legend"><i class="v"></i> Truy cập <i class="p"></i> Làm thử thách</p></div>
         <div class="card"><h3>🎯 Phân bố điểm</h3>${bar(100 * bt[2] / bs, "8–10 điểm", bt[2] + " lượt", "g")}${bar(100 * bt[1] / bs, "5–7 điểm", bt[1] + " lượt", "y")}${bar(100 * bt[0] / bs, "Dưới 5", bt[0] + " lượt", "r")}<p class="note">Thời gian làm bài trung bình: ${mm(j.avgSec)}</p></div>
         <div class="card"><h3>📚 Tỉ lệ đúng theo chương</h3>${chap.map((c) => bar(c.p || 0, "Chương " + c.c, c.p === null ? "–" : c.p + "%", c.p !== null && c.p < 50 ? "r" : c.p !== null && c.p < 75 ? "y" : "g")).join("")}</div>
-        ${hard.length ? `<div class="card"><h3>⚠️ Câu các em hay sai</h3><ol class="hardq">${hard.map((x) => `<li><b>${x.p}% đúng</b> · Chương ${x.ch}<br>${esc(x.q)}</li>`).join("")}</ol><p class="note">Gợi ý ôn lại các nội dung này trên lớp.</p></div>` : ""}
-        <div class="card"><h3>🏫 Theo lớp</h3>${j.classes.length ? `<div class="tblwrap"><table class="adtbl"><thead><tr><th>Lớp</th><th>Lượt làm</th><th>Số em*</th><th>Điểm TB</th><th>Cao nhất</th></tr></thead><tbody>${j.classes.map((c) => `<tr><td>${esc(c.c)}</td><td>${c.n}</td><td>${c.devs}</td><td>${c.avg}</td><td>${c.best}</td></tr>`).join("")}</tbody></table></div><p class="note">*Số thiết bị đã làm (mỗi em thường dùng một thiết bị).</p>` : `<p class="note">Chưa có lớp nào nhập mã lớp.</p>`}</div>
-        <div class="card"><h3>⭐ Đánh giá</h3>${[5, 4, 3, 2, 1].map((s) => bar(100 * rd[s - 1] / rm, s + " sao", rd[s - 1] + "", "y")).join("")}</div>
-        <div class="row c"><button class="btn alt sm" id="admcsv" type="button">⬇️ Tải bảng theo lớp (CSV)</button></div>`;
+        ${hard.length ? `<div class="card"><h3>⚠️ Câu các bạn hay sai</h3><ol class="hardq">${hard.map((x) => `<li><b>${x.p}% đúng</b> · Chương ${x.ch}<br>${esc(x.q)}</li>`).join("")}</ol><p class="note">Gợi ý ôn lại các nội dung này trên lớp.</p></div>` : ""}
+        <div class="card"><h3>⭐ Đánh giá</h3>${[5, 4, 3, 2, 1].map((s) => bar(100 * rd[s - 1] / rm, s + " sao", rd[s - 1] + "", "y")).join("")}</div>`;
       $("#admref").onclick = load; $("#admout").onclick = () => { setPw(""); login(); };
-      $("#admcsv").onclick = () => {
-        const rows = [["Lớp", "Lượt làm", "Số thiết bị", "Điểm TB", "Cao nhất"]].concat(j.classes.map((c) => [c.c, c.n, c.devs, c.avg, c.best]));
-        const csv = "\ufeff" + rows.map((r) => r.map((x) => '"' + String(x).replace(/"/g, '""') + '"').join(",")).join("\r\n");
-        const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); a.download = "thong-ke-theo-lop.csv"; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-      };
     }
     load();
   };

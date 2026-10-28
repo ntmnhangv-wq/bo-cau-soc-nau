@@ -41,5 +41,5 @@ Cần làm một lần sau khi dán Code.gs mới:
 2. **Triển khai → Quản lý bản triển khai → ✏️ → Phiên bản mới → Triển khai** (địa chỉ /exec giữ nguyên).
 3. Trong app: **Giới thiệu → 🔒 Quản trị** (hoặc `…/#/quan-tri`), nhập mật khẩu.
 
-Trang cho xem: lượt truy cập, số thiết bị, lượt làm thử thách, điểm trung bình, biểu đồ 14 ngày, phân bố điểm, tỉ lệ đúng theo chương, câu các em hay sai, bảng theo lớp (có nút tải CSV), đánh giá sao.
+Trang cho xem: lượt truy cập, số thiết bị, lượt làm thử thách, điểm trung bình, biểu đồ 7 ngày (từ 26/10/2026), phân bố điểm, tỉ lệ đúng theo chương, câu các bạn hay sai, đánh giá sao.
 Nhập sai 5 lần sẽ bị khóa khoảng 10 phút. Số liệu ẩn danh, không có tên học sinh.
