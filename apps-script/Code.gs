@@ -22,22 +22,28 @@ function setup() {
   const st = ss.getSheetByName('ThongKe') || ss.insertSheet('ThongKe');
   st.clear();
   st.getRange('A1:B1').setValues([['Chỉ số', 'Giá trị']]).setFontWeight('bold');
-  st.getRange('A2:B9').setFormulas([
+  // Dò dấu ngăn cách tham số của bảng tính (Việt Nam dùng ";" thay vì ",")
+  const probe = st.getRange('E1'); probe.setValue('=IF(TRUE,1,2)'); SpreadsheetApp.flush();
+  const sep = (probe.getDisplayValue() === '1') ? ',' : ';'; probe.clear();
+  const F = function (s) { return s.replace(/@/g, sep); };
+  const rows = [
     ['Tổng lượt truy cập', '=COUNTA(LuotTruyCap!A2:A)'],
-    ['Số thiết bị truy cập', '=IFERROR(COUNTA(UNIQUE(LuotTruyCap!B2:B)),0)'],
+    ['Số thiết bị truy cập', F('=IFERROR(COUNTA(UNIQUE(LuotTruyCap!B2:B))@0)')],
     ['Số lượt đánh giá', '=COUNTA(DanhGia!C2:C)'],
-    ['Điểm đánh giá trung bình (sao)', '=IFERROR(ROUND(AVERAGE(DanhGia!C2:C),2),0)'],
+    ['Điểm đánh giá trung bình (sao)', F('=IFERROR(ROUND(AVERAGE(DanhGia!C2:C)@2)@0)')],
     ['Tổng số lượt chơi thử thách', '=COUNTA(KetQua!A2:A)'],
-    ['Điểm thử thách trung bình', '=IFERROR(ROUND(AVERAGE(KetQua!D2:D),2),0)'],
-    ['Số lượt đạt 8–10 điểm', '=COUNTIF(KetQua!D2:D,">=8")'],
-    ['Số lượt dưới 5 điểm', '=COUNTIF(KetQua!D2:D,"<5")'],
-  ]);
+    ['Điểm thử thách trung bình', F('=IFERROR(ROUND(AVERAGE(KetQua!D2:D)@2)@0)')],
+    ['Số lượt đạt 8–10 điểm', F('=COUNTIF(KetQua!D2:D@">=8")')],
+    ['Số lượt dưới 5 điểm', F('=COUNTIF(KetQua!D2:D@"<5")')]
+  ];
+  st.getRange('A2:B9').setValues(rows); // setValues: chữ giữ nguyên, ô bắt đầu bằng "=" thành công thức
   st.getRange('A11:C11').setValues([['Câu', 'Chương', '% trả lời đúng']]).setFontWeight('bold');
   const chap = [1,1,2,2,3,3,4,4,5,5], cols = ['F','G','H','I','J','K','L','M','N','O'];
   for (let i = 0; i < 10; i++) {
-    st.getRange(12 + i, 1, 1, 3).setFormulas([[
+    const rg = 'KetQua!' + cols[i] + '2:' + cols[i];
+    st.getRange(12 + i, 1, 1, 3).setValues([[
       'Câu ' + (i + 1), chap[i],
-      '=IFERROR(ROUND(100*SUM(KetQua!' + cols[i] + '2:' + cols[i] + ')/COUNT(KetQua!' + cols[i] + '2:' + cols[i] + '),0)&"%","")'
+      F('=IFERROR(ROUND(100*SUM(' + rg + ')/COUNT(' + rg + ')@0)&"%"@"")')
     ]]);
   }
   st.autoResizeColumns(1, 3);
