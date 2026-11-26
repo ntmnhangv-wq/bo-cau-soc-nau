@@ -66,7 +66,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "27", date: "26/11/2026", note: "Học chương nào trước cũng được; thêm huy hiệu hoàn thành hành trình có số thứ tự" };
+  const APP_VERSION = { v: "28", date: "26/11/2026", note: "Báo rõ khi chưa nhận được số huy hiệu" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -186,7 +186,7 @@
 
   /* ---------- huy hiệu hoàn thành hành trình (số thứ tự lấy từ Apps Script) ---------- */
   const badgeNo = (n) => String(n).padStart(3, "0");
-  let claiming = false;
+  let claiming = false, badgeErr = "";
   async function claimBadge(silent) {
     if (stampCount() < 5 || claiming) return;
     if (!S.badge) { S.badge = { ts: Date.now(), no: null, shown: false }; save(); }
@@ -194,8 +194,8 @@
       claiming = true;
       try {
         const r = await fetch(CFG.SHEETS_URL + "?action=badge&dev=" + encodeURIComponent(S.dev) + "&t=" + Date.now(), { cache: "no-store" });
-        const j = await r.json(); if (j && j.ok && j.no) { S.badge.no = j.no; save(); }
-      } catch (e) {} finally { claiming = false; }
+        const j = await r.json(); if (j && j.ok && j.no) { S.badge.no = j.no; save(); } else badgeErr = "old";
+      } catch (e) { badgeErr = "net"; } finally { claiming = false; }
     }
     if (!S.badge.shown && !silent) { S.badge.shown = true; save(); showBadge(); }
   }
@@ -1076,7 +1076,7 @@
     </section>`;
     if (deferredInstall) { $("#inst").hidden = false; $("#inst").onclick = () => { deferredInstall.prompt(); deferredInstall = null; $("#inst").hidden = true; }; }
     $("#dl").onclick = downloadAudio; mountShare();
-    if (n === 5) { const had = !!(S.badge && S.badge.no); if (!had) claimBadge(true).then(() => { if (location.hash === "#/ho-chieu" && S.badge && S.badge.no) views.passport(); }); const g = $("#bdgget"); if (g) g.onclick = async () => { g.disabled = true; await claimBadge(true); views.passport(); }; }
+    if (n === 5) { const had = !!(S.badge && S.badge.no); if (!had) claimBadge(true).then(() => { if (location.hash === "#/ho-chieu" && S.badge && S.badge.no) views.passport(); }); const g = $("#bdgget"); if (g) g.onclick = async () => { g.disabled = true; g.textContent = "Đang lấy số…"; badgeErr = ""; await claimBadge(true); if (!(S.badge && S.badge.no)) { toast(badgeErr === "old" ? "Máy chủ chưa bật tính năng cấp số. Nhóm tác giả cần cập nhật Apps Script." : "Chưa kết nối được. Kiểm tra mạng rồi thử lại."); g.disabled = false; g.textContent = "Nhận số huy hiệu"; } else views.passport(); }; }
     $("#reset").onclick = () => {
       if (!confirm("Xóa các tem, vị trí đang đọc và thành tích trên máy này?")) return;
       const dev = S.dev; S = Object.assign({}, defaults, { dev }); save(); views.passport();
