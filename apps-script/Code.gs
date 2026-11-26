@@ -6,6 +6,7 @@ const SCORE = 'KetQua', VISIT = 'LuotTruyCap', RATE = 'DanhGia';
 const SCORE_H = ['Thời gian', 'Mã thiết bị (ẩn danh)', 'Lượt chơi', 'Điểm /10', 'Giây làm bài', 'C1','C2','C3','C4','C5','C6','C7','C8','C9','C10', 'Mã lớp', 'Chuỗi đúng dài nhất', 'Mã đố'];
 const VISIT_H = ['Thời gian', 'Mã thiết bị (ẩn danh)'];
 const RATE_H = ['Cập nhật lúc', 'Mã thiết bị (ẩn danh)', 'Số sao'];
+const BADGE = 'HuyHieu', BADGE_H = ['Số huy hiệu', 'Thời gian', 'Mã thiết bị (ẩn danh)'];
 
 function sheet_(name, headers) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -121,7 +122,27 @@ function admin_(pw) {
   return res;
 }
 
+/** Cấp số huy hiệu: người đầu tiên là 1 (hiển thị 001), mỗi thiết bị chỉ nhận một số. */
+function badge_(devRaw) {
+  const dev = String(devRaw || '').slice(0, 12);
+  if (!dev) return { ok: false };
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000);
+    const sh = sheet_(BADGE, BADGE_H), n = sh.getLastRow() - 1;
+    let max = 0;
+    if (n > 0) {
+      const rows = sh.getRange(2, 1, n, 3).getValues();
+      for (let i = 0; i < rows.length; i++) { const no = Number(rows[i][0]) || 0; if (String(rows[i][2]) === dev) return { ok: true, no: no }; if (no > max) max = no; }
+    }
+    const no = max + 1;
+    sh.appendRow([no, new Date(), dev]);
+    return { ok: true, no: no };
+  } catch (err) { return { ok: false, error: String(err) }; } finally { try { lock.releaseLock(); } catch (x) {} }
+}
+
 function doGet(e) {
+  if (e && e.parameter && e.parameter.action === 'badge') return out_(badge_(e.parameter.dev));
   if (e && e.parameter && e.parameter.action === 'admin') return out_(admin_(e.parameter.pw));
   if (e && e.parameter && e.parameter.action === 'stats') {
     const cache = CacheService.getScriptCache();

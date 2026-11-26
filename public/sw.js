@@ -1,5 +1,5 @@
 /* Service worker: dùng offline. Đổi VERSION mỗi lần cập nhật nội dung. */
-const VERSION = "v26";
+const VERSION = "v27";
 const SHELL = "bcsn-shell-" + VERSION;
 const AUDIO = "bcsn-audio-v1";
 const ASSETS = [

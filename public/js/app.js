@@ -10,7 +10,7 @@
   /* ---------- lưu trữ (an toàn khi bị chặn) ---------- */
   const KEY = "bcsn.v1";
   let appReady = false;
-  const defaults = { pos: {}, done: {}, prog: {}, autoSync: true, best: null, plays: 0, lang: "bi", speed: 1, vol: 1, last: null, dev: null, qxp: 0, rxp: 0, vstat: {}, vmode: "page", tfs: 0, lvl: null, cls: "", noTimer: false, bestStreak: 0 };
+  const defaults = { pos: {}, done: {}, prog: {}, autoSync: true, best: null, plays: 0, lang: "bi", speed: 1, vol: 1, last: null, dev: null, qxp: 0, rxp: 0, vstat: {}, vmode: "page", tfs: 0, lvl: null, cls: "", noTimer: false, bestStreak: 0, badge: null };
   let S = Object.assign({}, defaults);
   try { Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
   if (!S.dev) S.dev = "d" + Math.random().toString(36).slice(2, 10);
@@ -66,7 +66,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "26", date: "28/10/2026", note: "Thống kê quản trị 7 ngày từ 26/10, bỏ bảng theo lớp, đổi cách xưng hô thành bạn" };
+  const APP_VERSION = { v: "27", date: "26/11/2026", note: "Học chương nào trước cũng được; thêm huy hiệu hoàn thành hành trình có số thứ tự" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -180,7 +180,39 @@
   /* ---------- tem hộ chiếu ---------- */
   const stampCount = () => Object.keys(S.done).length;
   const firstOpen = () => { for (let k = 1; k <= 5; k++) if (!S.done[k]) return k; return 5; };
-  const canOpen = (n) => n <= 1 || !!S.done[n - 1];
+  const canOpen = () => true; // học chương nào trước cũng được
+  const nextTodo = (n) => { for (let k = 1; k <= 5; k++) { const c = ((n - 1 + k) % 5) + 1; if (c !== n && !S.done[c]) return c; } return 0; };
+
+
+  /* ---------- huy hiệu hoàn thành hành trình (số thứ tự lấy từ Apps Script) ---------- */
+  const badgeNo = (n) => String(n).padStart(3, "0");
+  let claiming = false;
+  async function claimBadge(silent) {
+    if (stampCount() < 5 || claiming) return;
+    if (!S.badge) { S.badge = { ts: Date.now(), no: null, shown: false }; save(); }
+    if (S.badge.no === null && CFG.SHEETS_URL && navigator.onLine) {
+      claiming = true;
+      try {
+        const r = await fetch(CFG.SHEETS_URL + "?action=badge&dev=" + encodeURIComponent(S.dev) + "&t=" + Date.now(), { cache: "no-store" });
+        const j = await r.json(); if (j && j.ok && j.no) { S.badge.no = j.no; save(); }
+      } catch (e) {} finally { claiming = false; }
+    }
+    if (!S.badge.shown && !silent) { S.badge.shown = true; save(); showBadge(); }
+  }
+  function showBadge() {
+    const b = S.badge; if (!b) return;
+    let m = document.getElementById("bdgm"); if (m) m.remove();
+    m = document.createElement("div"); m.id = "bdgm"; m.className = "bdgm"; m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true"); m.setAttribute("aria-label", "Huy hiệu hoàn thành hành trình");
+    m.innerHTML = `<div class="bdgbox"><div class="bdgmedal" aria-hidden="true">🏅</div><h2>Chúc mừng bạn!</h2>
+      <p>Bạn đã khám phá đủ 5 chương và nhận <b>Huy hiệu Nhà khám phá TP. Hồ Chí Minh</b>.</p>
+      <div class="bdgno">${b.no ? "Số " + badgeNo(b.no) : "Đang chờ cấp số…"}</div>
+      <p class="note">${b.no ? "Bạn là người thứ " + badgeNo(b.no) + " hoàn thành hành trình." : "Cần kết nối mạng để nhận số. App sẽ tự cấp khi có mạng."}</p>
+      <div class="row c"><a class="btn" href="#/ho-chieu" id="bdgp">Xem trong hộ chiếu</a><button class="btn alt" type="button" id="bdgx">Đóng</button></div></div>`;
+    document.body.appendChild(m);
+    const close = () => m.remove(); $("#bdgx", m).onclick = close; $("#bdgp", m).onclick = close; $("#bdgx", m).focus();
+    m.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+  }
+  window.addEventListener("online", () => { if (S.badge && S.badge.no === null) claimBadge(true).then(() => { const x = document.getElementById("bdgm"); if (x && S.badge.no) showBadge(); }); });
 
   /* ---------- điểm kinh nghiệm (XP) và cấp độ ---------- */
   const LEVELS = [[0, "Tân binh khám phá", "🐣"], [40, "Bạn đồng hành", "🎒"], [120, "Người dẫn đường", "🧭"], [240, "Nhà thám hiểm", "🗺️"], [380, "Hướng dẫn viên", "📣"], [520, "Chuyên gia phố phường", "🏙️"], [660, "Đại sứ TP. Hồ Chí Minh", "🏅"]];
@@ -332,7 +364,7 @@
   function mapHTML() {
     const pts = [[60, 224], [150, 190], [96, 124], [212, 98], [296, 48]];
     const icons = ["🏛️", "🗺️", "📸", "🍜", "🚇"], names = [["Lịch sử", "hình thành"], ["Vị trí địa lí"], ["Điểm du lịch"], ["Ẩm thực"], ["Giao thông"]];
-    const cur = firstOpen(), allDone = !!S.done[5];
+    const cur = firstOpen(), allDone = stampCount() >= 5;
     const seg = (i) => { // đoạn cong từ điểm i tới i+1 (Catmull-Rom)
       const p0 = pts[Math.max(i - 1, 0)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(i + 2, 4)];
       const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
@@ -351,7 +383,7 @@
       <path class="river" d="M-10 60 C 60 96, 130 20, 190 140 S 300 250, 380 214"/>
       <text class="rivlab" x="236" y="224" transform="rotate(-18 236 224)">sông Sài Gòn</text>
       <path class="route" d="${pts.map((q, i) => (i ? "L" : "M") + q[0] + " " + q[1]).join(" ")}" opacity="0"/>
-      ${path}${nodes}</svg><p class="note" style="text-align:center;margin:6px 0 0">${allDone ? "🎉 Bạn đã đi hết hành trình!" : "Chạm vào điểm sáng để tiếp tục hành trình."}</p></div>`;
+      ${path}${nodes}</svg><p class="note" style="text-align:center;margin:6px 0 0">${allDone ? "🎉 Bạn đã đi hết hành trình!" : "Chọn chương nào trước cũng được. Đủ 5 tem sẽ nhận huy hiệu!"}</p></div>`;
   }
   views.toc = () => {
     main.innerHTML = `<section class="view">
@@ -359,7 +391,7 @@
       ${levelHTML()}${mapHTML()}
       <ol class="toc">${D.chapters.map((c) => { const open = canOpen(c.id); const tag = open ? "a" : "div"; return `<li><${tag} class="chcard${open ? "" : " locked"}" ${open ? `href="#/chuong/${c.id}"` : 'aria-disabled="true"'}>
         <div class="pic"><img src="${c.thumb}" alt="" loading="lazy"><span class="num">Chương ${c.id}</span>${S.done[c.id] ? '<span class="done">✓ Hoàn thành</span>' : !open ? '<span class="lock">🔒</span>' : ""}</div>
-        <div class="bd">${chProg(c)}<h3>${esc(c.vi)}</h3><p class="e en" lang="en">${esc(c.en)}</p><p>${open ? esc(c.desc) : "Hoàn thành Chương " + (c.id - 1) + " để mở chương này."}</p></div></${tag}></li>`; }).join("")}</ol>
+        <div class="bd">${chProg(c)}<h3>${esc(c.vi)}</h3><p class="e en" lang="en">${esc(c.en)}</p><p>${esc(c.desc)}</p></div></${tag}></li>`; }).join("")}</ol>
       <div class="minor"><div class="row c">
         <a class="btn alt sm" href="#/lam-quen">👋 Làm quen Bồ Câu và Sóc Nâu</a>
         <a class="btn alt sm" href="#/doc-truyen">📖 Đọc toàn bộ truyện</a>
@@ -394,7 +426,7 @@
     const badTrack = {};
     let lastIdx = -1, lastP = -2;
     let lang = S.lang, track = "vi", playing = false, dragging = false;
-    const nextHref = n < 5 ? "#/chuong/" + (n + 1) : "#/ket-thuc";
+    const nextHref = "#/muc-luc";
     main.innerHTML = `<section class="view">
       <div class="intro" id="intro"><span class="kicker">Chương ${n}</span><h1>${esc(ch.vi)}</h1><p class="e" lang="en">${esc(ch.en)}</p>
         <div class="introhd">💬 Hai bạn dẫn vào chương</div>
@@ -418,10 +450,10 @@
         <div class="row c" style="margin-top:12px"><a class="btn sm alt" href="#/on-tu">🎮 Chơi ôn từ vựng</a></div>
       </div>
 
-      <div class="panel"><div class="card req" id="req"><h3>🎯 Hoàn thành chương để mở tiếp</h3>
+      <div class="panel"><div class="card req" id="req"><h3>🎯 Hoàn thành chương để nhận tem</h3>
         <ul class="reqlist"><li data-r="img"></li><li data-r="vocab"></li><li data-r="audio"></li></ul>
         <div class="bar" aria-hidden="true"><i id="reqbar" style="width:0"></i></div><p class="note" id="reqmsg" style="margin:6px 0 0"></p></div></div>
-      <div class="endnav"><a class="btn alt" href="#/muc-luc">☰ Về mục lục</a><a class="btn locked" id="nextbtn" href="${nextHref}">${n < 5 ? "Chương tiếp theo →" : "Kết thúc hành trình →"}</a></div>
+      <div class="endnav"><a class="btn alt" href="#/muc-luc">☰ Về mục lục</a><a class="btn" id="nextbtn" href="${nextHref}">Chương tiếp theo →</a></div>
       </div>
     </section>`;
     $("#introgo").onclick = () => { $("#intro").hidden = true; $("#chmain").hidden = false; window.scrollTo(0, 0); const h = $("#chmain .chhead h1"); if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); } };
@@ -454,12 +486,13 @@
       $$("#req [data-r]").forEach((li) => { const [ok, t] = items[li.dataset.r]; if (ok) okc++; li.className = ok ? "ok" : ""; li.textContent = (ok ? "✅ " : "⬜ ") + t; });
       $("#reqbar").style.width = (okc / 3) * 100 + "%";
       const all = okc === 3;
-      if (all && !S.done[n]) { S.done[n] = Date.now(); save(); toast("🏅 Hoàn thành Chương " + n + "! Bạn nhận được 1 tem."); }
-      const done = !!S.done[n];
-      const nb = $("#nextbtn"); if (nb) { nb.classList.toggle("locked", !done); nb.setAttribute("aria-disabled", String(!done)); }
-      $("#reqmsg").textContent = done ? "Đã hoàn thành! Bạn có thể sang " + (n < 5 ? "chương tiếp theo." : "phần kết thúc.") : "Hoàn thành cả 3 mục để mở " + (n < 5 ? "chương tiếp theo." : "phần kết thúc.");
+      let fresh = false;
+      if (all && !S.done[n]) { S.done[n] = Date.now(); fresh = true; save(); toast("🏅 Hoàn thành Chương " + n + "! Bạn nhận được 1 tem."); }
+      const done = !!S.done[n], nx = nextTodo(n), allc = stampCount() >= 5;
+      const nb = $("#nextbtn"); if (nb) { nb.href = allc ? "#/ket-thuc" : nx ? "#/chuong/" + nx : "#/muc-luc"; nb.textContent = allc ? "Kết thúc hành trình →" : nx ? "Sang Chương " + nx + " →" : "☰ Về mục lục"; }
+      $("#reqmsg").textContent = done ? (allc ? "Bạn đã hoàn thành cả 5 chương!" : "Đã hoàn thành chương này. Bạn có thể chọn chương khác.") : "Hoàn thành cả 3 mục để nhận tem của chương này.";
+      if (fresh && allc) setTimeout(claimBadge, 1200);
     }
-    $("#nextbtn").onclick = (e) => { if (!S.done[n]) { e.preventDefault(); toast("🔒 Bạn cần hoàn thành cả 3 mục trước nhé!"); $("#req").scrollIntoView({ behavior: "smooth", block: "center" }); } };
 
     // audio
     const note = $("#anote");
@@ -822,13 +855,13 @@
     const sec = (ic, t, body, open) => `<details class="hsec"${open ? " open" : ""}><summary><span class="hic" aria-hidden="true">${ic}</span>${t}</summary><div class="hbody">${body}</div></details>`;
     main.innerHTML = `<section class="view help">
       <div class="title-wrap"><span class="kicker">Hướng dẫn</span><h1>Cách dùng Bồ Câu &amp; Sóc Nâu</h1><p class="note">Chạm vào từng mục để xem. Dành cho học sinh và thầy cô.</p></div>
-      ${sec("🚀", "Bắt đầu nhanh", `<ol><li>Vào <b>Mục lục</b> (nút ☰ trên cùng), chọn <b>Chương 1</b>.</li><li>Đọc lời dẫn của Sóc Nâu và Bồ Câu, bấm <b>Bắt đầu đọc chương</b>.</li><li>Bấm <b>🔊 Đọc cho mình nghe</b> trên tranh. Giọng đọc chạy tới đâu, tranh tự lật tới đó.</li><li>Xem hết tranh, lật hết thẻ từ vựng, nghe hết một bản audio để mở <b>chương tiếp theo</b>.</li></ol>`, true)}
+      ${sec("🚀", "Bắt đầu nhanh", `<ol><li>Vào <b>Mục lục</b> (nút ☰ trên cùng), chọn chương bạn thích. <b>Học chương nào trước cũng được.</b></li><li>Đọc lời dẫn của Sóc Nâu và Bồ Câu, bấm <b>Bắt đầu đọc chương</b>.</li><li>Bấm <b>🔊 Đọc cho mình nghe</b> trên tranh. Giọng đọc chạy tới đâu, tranh tự lật tới đó.</li><li>Xem hết tranh, lật hết thẻ từ vựng, nghe hết một bản audio để nhận <b>tem</b> của chương.</li><li>Đủ <b>5 tem</b> bạn nhận <b>huy hiệu có số thứ tự</b> (001, 002…).</li></ol>`, true)}
       ${sec("🖼", "Xem tranh và nghe đọc", `<ul><li><b>▶ / ⏸</b>: phát hoặc dừng. Kéo thanh thời gian để tua.</li><li><b>1×</b>: đổi tốc độ đọc. <b>Việt / English</b>: đổi giọng đọc. <b>🔊</b>: chỉnh âm lượng.</li><li><b>Nút hình bức tranh</b>: bật/tắt <i>tự lật trang theo giọng đọc</i>. Tắt đi nếu bạn muốn tự lật.</li><li><b>Lật tay</b>: bấm Trước / Sau hoặc vuốt sang trái, phải. Máy tính dùng phím ← →.</li><li><b>Phóng to</b>: chạm vào tranh, hoặc bấm nút toàn màn hình ⛶ ở góc phải thanh phát.</li><li>Khi đang phát, thanh điều khiển tự ẩn sau vài giây. Chạm vào tranh để hiện lại.</li></ul>`)}
       ${sec("💬", "Lời của hai bạn và lời kể", `<ul><li>Đầu mỗi chương, Sóc Nâu và Bồ Câu nói vài câu dẫn vào bài. Chọn <b>Tiếng Việt / English / Song ngữ</b> ngay tại đó.</li><li>Phần <b>Lời kể của chương</b> sáng lên đúng đoạn đang được đọc.</li><li><b>A− / A+</b>: chỉnh cỡ chữ cho dễ đọc.</li></ul>`)}
       ${sec("🔤", "Từ vựng Anh–Việt", `<ul><li>Trong lời tiếng Anh, từ có <b>gạch chấm đỏ</b> là từ vựng. <b>Chạm vào</b> để xem nghĩa tiếng Việt và nghe phát âm.</li><li>Cuối chương có các <b>thẻ từ vựng</b>: chạm để lật xem nghĩa, bấm loa để nghe.</li><li>Từ bạn đã chạm được lưu lại để ôn sau.</li></ul>`)}
       ${sec("🎮", "Ôn từ vựng", `<p>Vào <b>Mục lục → 🔤 Ôn từ vựng</b>. Có hai trò chơi:</p><ul><li><b>Nghe rồi chọn</b>: nghe một từ, chọn nghĩa đúng.</li><li><b>Ghép cặp</b>: nối từ tiếng Anh với nghĩa tiếng Việt.</li></ul><p>Từ nào trả lời sai sẽ được hỏi lại nhiều hơn. Số trong ngoặc là số từ đang cần ôn.</p>`)}
       ${sec("⭐", "Thử thách nhớ nhanh", `<ul><li>Trả lời câu hỏi về thành phố, có <b>đồng hồ đếm giờ</b> và <b>chuỗi đúng liên tiếp</b> để cộng thêm điểm.</li><li><b>Mã đố</b>: nhập cùng một mã với bạn bè để thi chung một đề. Sau khi làm xong, bạn nhận mã mới để gửi bạn.</li><li>Nhập <b>lớp</b> của mình để ghi tên lên <b>🏆 Bảng xếp hạng lớp</b> (chỉ hiện biệt danh, không lộ thông tin cá nhân).</li><li>Bấm <b>🖼 Tạo ảnh thành tích</b> để lưu hoặc chia sẻ kết quả.</li></ul>`)}
-      ${sec("🏅", "Điểm kinh nghiệm, cấp độ và hộ chiếu", `<ul><li>Đọc chương, ôn từ, làm thử thách đều được <b>điểm kinh nghiệm</b> và lên <b>cấp</b>.</li><li>Hoàn thành mỗi chương được một <b>tem</b> trong <b>Hộ chiếu khám phá</b> (nút thứ hai trên cùng).</li><li>Trên <b>bản đồ hành trình</b> ở trang chủ, các điểm sáng dần khi bạn đi tiếp.</li></ul>`)}
+      ${sec("🏅", "Điểm kinh nghiệm, cấp độ và hộ chiếu", `<ul><li>Đọc chương, ôn từ, làm thử thách đều được <b>điểm kinh nghiệm</b> và lên <b>cấp</b>.</li><li>Hoàn thành mỗi chương được một <b>tem</b> trong <b>Hộ chiếu khám phá</b> (nút thứ hai trên cùng).</li><li>Hoàn thành đủ 5 chương, bạn nhận <b>huy hiệu Nhà khám phá TP. Hồ Chí Minh</b> với số thứ tự riêng, bắt đầu từ 001.</li><li>Trên <b>bản đồ hành trình</b> ở trang chủ, các điểm sáng dần khi bạn đi tiếp.</li></ul>`)}
       ${sec("📱", "Cài app và dùng ngoại tuyến", `<ul><li><b>iPhone (Safari)</b>: bấm nút Chia sẻ → <b>Thêm vào Màn hình chính</b>.</li><li><b>Android (Chrome)</b>: menu ⋮ → <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>.</li><li>Sau khi mở một lần có mạng, nhiều phần vẫn xem được khi mất mạng. Điểm sẽ gửi lên khi có mạng lại.</li><li><b>Nền tối</b>: nút 🌙 ở cuối trang, dễ nhìn khi đọc buổi tối.</li></ul>`)}
       ${sec("🧑‍🏫", "Gợi ý cho thầy cô", `<ul><li>Cho cả lớp cùng thi một <b>mã đố</b>, nhập đúng tên lớp để xem bảng xếp hạng chung.</li><li>Dùng chế độ <b>Song ngữ</b> khi dạy học kết hợp Tiếng Anh; <b>Tiếng Việt</b> khi cần tập trung nội dung.</li><li>Nên chiếu tranh ở chế độ toàn màn hình, bật tự lật trang để cả lớp nghe và xem.</li><li>Học sinh dùng chung một máy: điểm lưu theo từng máy và trình duyệt.</li></ul>`)}
       ${sec("🛠", "Gặp sự cố?", `<ul><li><b>Không nghe được tiếng</b>: kiểm tra nút gạt âm thanh, âm lượng điện thoại và nút 🔊 trên thanh phát.</li><li><b>App chưa cập nhật</b>: tắt hẳn app rồi mở lại. Cuối trang có dòng <i>Phiên bản…</i> để đối chiếu.</li><li><b>Tranh lật chưa khớp giọng đọc</b>: tắt nút tự lật và lật tay, rồi báo thầy cô để chỉnh.</li><li><b>Chưa có bảng xếp hạng</b>: cần có mạng và đã nhập tên lớp.</li></ul>`)}
@@ -1032,7 +1065,7 @@
       <div class="stamps">${D.chapters.map((c, i) => `<div class="stamp ${S.done[c.id] ? "got" : ""}"><div class="ic" aria-hidden="true">${icons[i]}</div><b>Chương ${c.id}</b><small>${esc(c.vi)}</small><br><small>${S.done[c.id] ? "✓ Đã nhận" : "Chưa nhận"}</small></div>`).join("")}</div>
       <div class="card badge"><div class="medal ${medal ? medal.badge : ""}" aria-hidden="true">${medal ? (medal.badge === "gold" ? "🥇" : medal.badge === "silver" ? "🥈" : "🥉") : "❔"}</div>
         <div>${medal ? `<b>${esc(medal.title)}</b><br>Thành tích tốt nhất: ${S.best}/10 · Đã chơi ${S.plays} lần` : `<b>Chưa có huy hiệu</b><br>Hoàn thành thử thách để nhận huy hiệu nhé!`}</div></div>
-      ${n === 5 ? '<div class="card" style="background:var(--leaf-l)"><b>🎉 Bạn đã đủ 5 tem! Nhà khám phá TP. Hồ Chí Minh thực thụ.</b></div>' : ""}
+      ${n === 5 ? `<div class="card bdgcard"><div class="bdgmedal sm" aria-hidden="true">🏅</div><div><b>Huy hiệu Nhà khám phá TP. Hồ Chí Minh</b><br><span class="bdgno sm">${S.badge && S.badge.no ? "Số " + badgeNo(S.badge.no) : "Đang chờ cấp số…"}</span>${S.badge && S.badge.no ? "" : '<br><button class="btn sm" id="bdgget" type="button">Nhận số huy hiệu</button>'}</div></div>` : '<p class="note" style="text-align:center">Đủ 5 tem để nhận huy hiệu có số thứ tự riêng!</p>'}
       <div class="row c"><button class="btn" id="sharebtn" type="button">🖼 Tạo ảnh thành tích</button><a class="btn alt" href="#/xep-hang">🏆 Xếp hạng lớp</a></div><div id="sharebox"></div>
       <div class="card"><h3>📲 Dùng không cần mạng</h3>
         <p class="note" style="margin-top:0">Tải trước audio để nghe offline trong lớp học hoặc trên xe.</p>
@@ -1043,6 +1076,7 @@
     </section>`;
     if (deferredInstall) { $("#inst").hidden = false; $("#inst").onclick = () => { deferredInstall.prompt(); deferredInstall = null; $("#inst").hidden = true; }; }
     $("#dl").onclick = downloadAudio; mountShare();
+    if (n === 5) { const had = !!(S.badge && S.badge.no); if (!had) claimBadge(true).then(() => { if (location.hash === "#/ho-chieu" && S.badge && S.badge.no) views.passport(); }); const g = $("#bdgget"); if (g) g.onclick = async () => { g.disabled = true; await claimBadge(true); views.passport(); }; }
     $("#reset").onclick = () => {
       if (!confirm("Xóa các tem, vị trí đang đọc và thành tích trên máy này?")) return;
       const dev = S.dev; S = Object.assign({}, defaults, { dev }); save(); views.passport();
@@ -1089,8 +1123,7 @@
       case "quan-tri": name = "admin"; break;
       default: name = "home";
     }
-    if (name === "chapter" && arg >= 1 && arg <= 5 && !canOpen(arg)) { const f = firstOpen(); toast("🔒 Hãy hoàn thành Chương " + f + " trước nhé!"); location.replace("#/chuong/" + f); return; }
-    if (name === "end" && !S.done[5]) { const f = firstOpen(); toast("🔒 Hãy hoàn thành Chương " + f + " trước nhé!"); location.replace("#/chuong/" + f); return; }
+    if (name === "end" && stampCount() < 5) { toast("Hãy hoàn thành đủ 5 chương để mở phần kết thúc nhé!"); location.replace("#/muc-luc"); return; }
     views[name](arg);
     const ch = name === "chapter" && D.chapters.find((c) => c.id === arg);
     document.title = (ch ? "Chương " + arg + ": " + ch.vi : titles[name]) + (name === "home" ? "" : " – Bồ Câu & Sóc Nâu");
@@ -1100,6 +1133,7 @@
   window.addEventListener("hashchange", route);
   appReady = true; lvlCheck();
   route();
+  if (stampCount() >= 5 && (!S.badge || S.badge.no === null)) setTimeout(() => claimBadge(), 1500);
   renderStats();
   countVisit().then(loadStats);
   flushQueue();
