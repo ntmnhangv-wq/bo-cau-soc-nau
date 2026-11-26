@@ -66,7 +66,7 @@
   $("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.id === "lb-body") lbClose(); });
 
   /* ---------- phiên bản (sửa dòng này mỗi lần cập nhật; nhớ đổi VERSION trong sw.js cho khớp) ---------- */
-  const APP_VERSION = { v: "28", date: "26/11/2026", note: "Báo rõ khi chưa nhận được số huy hiệu" };
+  const APP_VERSION = { v: "29", date: "26/11/2026", note: "Ảnh thành tích có số huy hiệu; báo rõ khi chưa nhận được số huy hiệu" };
   (() => { const f = document.querySelector("footer"); if (f) f.insertAdjacentHTML("beforeend", `<div class="ver" title="${APP_VERSION.note}">Phiên bản ${APP_VERSION.v} · cập nhật ${APP_VERSION.date}</div>`); })();
 
   /* ---------- nền tối / sáng ---------- */
@@ -779,7 +779,8 @@
 
   /* ảnh thành tích để chia sẻ */
   async function makeShareCard() {
-    const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    if (stampCount() >= 5 && !(S.badge && S.badge.no)) { try { await claimBadge(true); } catch (e) {} }
+    const W = 1080, H = 1530, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
     const g = cv.getContext("2d");
     try { await Promise.all([document.fonts.load('800 64px "Baloo 2"'), document.fonts.load("700 36px Nunito")]); } catch (e) {}
     const load = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
@@ -807,11 +808,16 @@
       txt("Chương " + c.id, x, y + 118, "700 30px " + BODY, got ? "#24384a" : "#8a99a8");
     });
     txt(stampCount() + "/5 tem đã thu thập", W / 2, 1060, "800 46px " + HEAD, "#24384a");
+    let dy = 0;
+    if (stampCount() >= 5 && S.badge && S.badge.no) { // huy hiệu hoàn thành hành trình
+      dy = 130; rr(110, 1090, W - 220, 100, 50); g.fillStyle = "#f7b731"; g.fill(); g.lineWidth = 6; g.strokeStyle = "#24384a"; g.stroke();
+      txt("🏅 Huy hiệu Nhà khám phá · Số " + badgeNo(S.badge.no), W / 2, 1157, "800 42px " + HEAD, "#24384a");
+    }
     const medal = S.best === null ? null : D.results.find((r) => S.best >= r.min);
-    g.font = "110px sans-serif"; g.textAlign = "center"; g.fillText(medal ? (medal.badge === "gold" ? "🥇" : medal.badge === "silver" ? "🥈" : "🥉") : "⭐", 300, 1190);
-    g.textAlign = "left"; g.font = "800 50px " + HEAD; g.fillStyle = "#24384a"; g.fillText(S.best === null ? "Chưa làm thử thách" : "Thử thách: " + S.best + "/10", 390, 1170);
-    g.font = "700 34px " + BODY; g.fillStyle = "#4f6475"; g.fillText(S.bestStreak ? "🔥 Chuỗi đúng dài nhất: " + S.bestStreak : "Cùng khám phá nhé!", 390, 1220);
-    txt(location.host || "Bồ Câu & Sóc Nâu", W / 2, 1290, "700 34px " + BODY, "#4f6475");
+    g.font = "110px sans-serif"; g.textAlign = "center"; g.fillText(medal ? (medal.badge === "gold" ? "🥇" : medal.badge === "silver" ? "🥈" : "🥉") : "⭐", 300, 1190 + dy);
+    g.textAlign = "left"; g.font = "800 50px " + HEAD; g.fillStyle = "#24384a"; g.fillText(S.best === null ? "Chưa làm thử thách" : "Thử thách: " + S.best + "/10", 390, 1170 + dy);
+    g.font = "700 34px " + BODY; g.fillStyle = "#4f6475"; g.fillText(S.bestStreak ? "🔥 Chuỗi đúng dài nhất: " + S.bestStreak : "Cùng khám phá nhé!", 390, 1220 + dy);
+    txt(location.host || "Bồ Câu & Sóc Nâu", W / 2, 1290 + dy, "700 34px " + BODY, "#4f6475");
     return new Promise((res) => cv.toBlob(res, "image/png"));
   }
   function mountShare() {
